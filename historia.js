@@ -1,14 +1,22 @@
-// ---------- historia.js - Tela de história inicial do jogo ----------
+// ---------- historia.js - Tela de história + tutorial ----------
 
 let historiaAtual = 0;
 let imagensHistoria = [];
 
 function preloadHistoria() {
-  // Carrega as 4 imagens da história
-  imagensHistoria[0] = loadImage("ImagensFundo/TelaHistoria1.png");
-  imagensHistoria[1] = loadImage("ImagensFundo/TelaHistoria2.png");
-  imagensHistoria[2] = loadImage("ImagensFundo/TelaHistoria3.png");
-  imagensHistoria[3] = loadImage("ImagensFundo/TelaHistoria4.png");
+  // Ajuste os nomes aqui se os seus forem diferentes
+  const caminhos = [
+    "ImagensFundo/TelaHistoria1.png",
+    "ImagensFundo/TelaHistoria2.png",
+    "ImagensFundo/TelaHistoria3.png",
+    "ImagensFundo/TelaHistoria4.png",
+    "ImagensFundo/TelaHistoria5.png",
+    "ImagensFundo/TelaHistoria6.png",
+    "ImagensFundo/TelaHistoria7.png",
+    "ImagensFundo/TelaHistoria8.png"
+  ];
+
+  imagensHistoria = caminhos.map(p => loadImage(p));
 }
 
 function drawHistoria() {
@@ -16,7 +24,13 @@ function drawHistoria() {
 
   // Fundo - usa a imagem correspondente à página atual
   if (imagensHistoria[historiaAtual]) {
-    image(imagensHistoria[historiaAtual], 0, 0, width, height);
+    image(imagensHistoria[historiaAtual], 0, 0, BASE_W, BASE_H);
+  } else {
+    background(255);
+    fill(0);
+    textAlign(CENTER, CENTER);
+    textSize(14);
+    text("Imagem da história não encontrada.", BASE_W / 2, BASE_H / 2);
   }
 
   // Navegação
@@ -31,139 +45,154 @@ function drawHistoria() {
   fill(0);
   textSize(12);
   textAlign(CENTER, CENTER);
-  text(`${historiaAtual + 1} / ${imagensHistoria.length}`, width / 2, height - 15);
+  text(`${historiaAtual + 1} / ${imagensHistoria.length}`, BASE_W / 2, BASE_H - 15);
 }
 
 function drawBotaoComecar() {
-  let btnX = width / 2 - 60;
-  let btnY = height - 150;
-  let btnW = 120;
-  let btnH = 40;
+  let btnW = 150;
+  let btnH = 44;
+  let btnX = BASE_W / 2 - btnW / 2;
+  let btnY = BASE_H - 150;
 
-  // Estilo do botão
-  if (mouseX > btnX && mouseX < btnX + btnW && mouseY > btnY && mouseY < btnY + btnH) {
-    fill(100, 220, 100); // Verde mais claro no hover
+  if (scaledMouseX() > btnX && scaledMouseX() < btnX + btnW && scaledMouseY() > btnY && scaledMouseY() < btnY + btnH) {
+    fill(100, 220, 100);
     cursor(HAND);
   } else {
-    fill(100, 200, 100); // Verde normal
+    fill(100, 200, 100);
   }
 
-  // Desenha o botão
   stroke(0);
   strokeWeight(2);
-  rect(btnX, btnY, btnW, btnH, 8);
+  rect(btnX, btnY, btnW, btnH, 10);
 
-  // Texto do botão
-  fill(255);
+  fill(0);
+  noStroke();
   textFont(myFont);
   textSize(12);
   textAlign(CENTER, CENTER);
-  noStroke();
   text("COMEÇAR", btnX + btnW / 2, btnY + btnH / 2);
 }
 
 function drawNavegacaoHistoria() {
-  let yBotoes = height - 80;
+  const mx = scaledMouseX();
+  const my = scaledMouseY();
+
+  let yBotoes = BASE_H - 80;
 
   // Botão Cancelar (volta para tela inicial)
   let xCancelar = 40;
-  if (mouseX > xCancelar && mouseX < xCancelar + 100 && mouseY > yBotoes && mouseY < yBotoes + 40) {
-    fill(255, 120, 120, 200);
+  if (mx > xCancelar && mx < xCancelar + 110 && my > yBotoes && my < yBotoes + 40) {
+    fill(255, 120, 120, 220);
     cursor(HAND);
   } else {
     fill(255, 100, 100, 200);
   }
-  rect(xCancelar, yBotoes, 100, 40, 8);
+  stroke(0);
+  strokeWeight(2);
+  rect(xCancelar, yBotoes, 110, 40, 10);
   fill(0);
+  noStroke();
   textSize(12);
   textAlign(CENTER, CENTER);
-  text("Cancelar", xCancelar + 50, yBotoes + 20);
+  text("Cancelar", xCancelar + 55, yBotoes + 20);
 
   // Botão Anterior
   if (historiaAtual > 0) {
-    let xAnterior = width / 2 - 120;
-    if (mouseX > xAnterior && mouseX < xAnterior + 100 && mouseY > yBotoes && mouseY < yBotoes + 40) {
-      fill(120, 220, 255, 200);
+    let xAnterior = BASE_W / 2 - 140;
+    if (mx > xAnterior && mx < xAnterior + 110 && my > yBotoes && my < yBotoes + 40) {
+      fill(120, 220, 255, 220);
       cursor(HAND);
     } else {
       fill(100, 200, 250, 200);
     }
-    rect(xAnterior, yBotoes, 100, 40, 8);
+    stroke(0);
+    strokeWeight(2);
+    rect(xAnterior, yBotoes, 110, 40, 10);
     fill(0);
-    text("Anterior", xAnterior + 50, yBotoes + 20);
+    noStroke();
+    text("Anterior", xAnterior + 55, yBotoes + 20);
   }
 
-  // Botão Próximo (só aparece se não for a última página)
+  // Botão Próximo
   if (historiaAtual < imagensHistoria.length - 1) {
-    let xProximo = width / 2 + 40;
-    if (mouseX > xProximo && mouseX < xProximo + 100 && mouseY > yBotoes && mouseY < yBotoes + 40) {
-      fill(120, 220, 255, 200);
+    let xProximo = BASE_W / 2 + 30;
+    if (mx > xProximo && mx < xProximo + 110 && my > yBotoes && my < yBotoes + 40) {
+      fill(120, 220, 255, 220);
       cursor(HAND);
     } else {
       fill(100, 200, 250, 200);
     }
-    rect(xProximo, yBotoes, 100, 40, 8);
+    stroke(0);
+    strokeWeight(2);
+    rect(xProximo, yBotoes, 110, 40, 10);
     fill(0);
-    text("Próximo", xProximo + 50, yBotoes + 20);
+    noStroke();
+    text("Próximo", xProximo + 55, yBotoes + 20);
   }
 
   // Botão Pular (vai direto para o jogo)
-  let xPular = width - 140;
-  if (mouseX > xPular && mouseX < xPular + 100 && mouseY > yBotoes && mouseY < yBotoes + 40) {
-    fill(255, 220, 100, 200);
+  let xPular = BASE_W - 150;
+  if (mx > xPular && mx < xPular + 110 && my > yBotoes && my < yBotoes + 40) {
+    fill(255, 220, 100, 220);
     cursor(HAND);
   } else {
     fill(255, 200, 80, 200);
   }
-  rect(xPular, yBotoes, 100, 40, 8);
+  stroke(0);
+  strokeWeight(2);
+  rect(xPular, yBotoes, 110, 40, 10);
   fill(0);
-  text("Pular", xPular + 50, yBotoes + 20);
+  noStroke();
+  text("Pular", xPular + 55, yBotoes + 20);
 }
 
 function mousePressedHistoria() {
-  let yBotoes = height - 80;
+  const mx = scaledMouseX();
+  const my = scaledMouseY();
 
-  // Botão Cancelar
+  let yBotoes = BASE_H - 80;
+
+  // Cancelar
   let xCancelar = 40;
-  if (mouseX > xCancelar && mouseX < xCancelar + 100 && mouseY > yBotoes && mouseY < yBotoes + 40) {
-    telaAtual = "inicio"; // volta para tela inicial
+  if (mx > xCancelar && mx < xCancelar + 110 && my > yBotoes && my < yBotoes + 40) {
+    telaAtual = "inicio";
     resetarHistoria();
     return true;
   }
 
-  // Botão Anterior
+  // Anterior
   if (historiaAtual > 0) {
-    let xAnterior = width / 2 - 120;
-    if (mouseX > xAnterior && mouseX < xAnterior + 100 && mouseY > yBotoes && mouseY < yBotoes + 40) {
+    let xAnterior = BASE_W / 2 - 140;
+    if (mx > xAnterior && mx < xAnterior + 110 && my > yBotoes && my < yBotoes + 40) {
       historiaAtual--;
       return true;
     }
   }
 
-  // Botão Próximo
+  // Próximo
   if (historiaAtual < imagensHistoria.length - 1) {
-    let xProximo = width / 2 + 40;
-    if (mouseX > xProximo && mouseX < xProximo + 100 && mouseY > yBotoes && mouseY < yBotoes + 40) {
+    let xProximo = BASE_W / 2 + 30;
+    if (mx > xProximo && mx < xProximo + 110 && my > yBotoes && my < yBotoes + 40) {
       historiaAtual++;
       return true;
     }
   }
 
-  // Botão Pular
-  let xPular = width - 140;
-  if (mouseX > xPular && mouseX < xPular + 100 && mouseY > yBotoes && mouseY < yBotoes + 40) {
+  // Pular
+  let xPular = BASE_W - 150;
+  if (mx > xPular && mx < xPular + 110 && my > yBotoes && my < yBotoes + 40) {
     iniciarJogo();
     return true;
   }
 
-  // Botão Começar (apenas na última página)
+  // Começar (só na última página)
   if (historiaAtual === imagensHistoria.length - 1) {
-    let btnX = width / 2 - 60;
-    let btnY = height - 150;
-    let btnW = 120;
-    let btnH = 40;
+    let btnW = 150;
+    let btnH = 44;
+    let btnX = BASE_W / 2 - btnW / 2;
+    let btnY = BASE_H - 150;
 
-    if (mouseX > btnX && mouseX < btnX + btnW && mouseY > btnY && mouseY < btnY + btnH) {
+    if (mx > btnX && mx < btnX + btnW && my > btnY && my < btnY + btnH) {
       iniciarJogo();
       return true;
     }
@@ -173,15 +202,16 @@ function mousePressedHistoria() {
 }
 
 function iniciarJogo() {
-  // Vai para a tela de jogo (cadastro de usuário)
+  scrollY = 0;
+  maxScrollY = 0; // optional but clean
   telaAtual = "jogo";
 }
+
 
 function resetarHistoria() {
   historiaAtual = 0;
 }
 
-// Função para navegação por teclado
 function keyPressedHistoria() {
   if (telaAtual === "historia") {
     if (keyCode === LEFT_ARROW && historiaAtual > 0) {
