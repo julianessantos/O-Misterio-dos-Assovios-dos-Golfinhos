@@ -74,6 +74,6 @@ Ou
 
 ## 🐬 Créditos
 
-Desenvolvido por: Francisco Figueiredo, Julia Forlit e Juliane Santos
+Desenvolvido por: Francisco Figueiredo, Julia Forli e Juliane Santos
 
 EAR hub UFRN
