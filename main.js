@@ -1,6 +1,6 @@
 let telaAtual = "inicio";
-const BASE_W = 1400;
-const BASE_H = 900;
+let BASE_W = 1400;
+let BASE_H = 900;
 
 let uiLayer;     // a div that sits on top of the canvas
 let uiScale = 1;
@@ -59,11 +59,11 @@ let scrollY = 0;
 let maxScrollY = 0;
 
 // layout do grid (mantém as cartas grandes)
-const GRID_COLUNAS = 3;
-const CARD_W = 270;
-const CARD_H = 185;
-const CARD_GAP_X = 20;
-const CARD_GAP_Y = 40;
+let GRID_COLUNAS = 3;
+let CARD_W = 270;
+let CARD_H = 185;
+let CARD_GAP_X = 20;
+let CARD_GAP_Y = 40;
 const PANEL_GAP = 18;        // gap between grid and side panel
 const PANEL_SIDE_PAD = 15;   // right margin for the panel
 const PANEL_W_MIN = 260;     // keep your panel readable
@@ -71,8 +71,146 @@ const PANEL_W_MIN = 260;     // keep your panel readable
 
 // margens dentro da tela do jogo (pra não bater nos textos/botões)
 const GRID_TOP = 100;
-const GRID_BOTTOM_RESERVED = 190; // espaço reservado para UI fixa embaixo (combinação/botões)
+let GRID_BOTTOM_RESERVED = 190; // espaço reservado para UI fixa embaixo (combinação/botões)
 
+
+
+// =====================================================================
+// LAYOUT: desktop (1400x900) x celular em retrato (tela de jogo)
+// No desktop nada muda. No celular em pé, a tela do jogo usa um canvas
+// "virtual" estreito (640 de largura) para que as cartas fiquem grandes.
+// =====================================================================
+const MOB_BASE_W = 640;
+const MOB_BOTTOM_RESERVED = 330;
+const MOB_PANEL_H = 170;
+const BRILHO_NO_CELULAR = true;   // clareia as cartas (espectrogramas escuros) em aparelhos touch
+const BRILHO_GAMMA = 0.6;         // menor = mais claro
+
+let modoMobile = false;
+let refW = 0, refH = 0;
+let loginEstiloModo = null;
+
+function ehTouch() {
+  return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+}
+
+function ehCelularRetrato() {
+  return ehTouch() && refW < 800 && refH > refW * 1.2;
+}
+
+function sincronizarLayout() {
+  const mobile = (telaAtual === "jogo") && ehCelularRetrato();
+  let w = 1400, h = 900;
+  if (mobile) {
+    w = MOB_BASE_W;
+    h = constrain(Math.round(MOB_BASE_W * refH / refW), 900, 1500);
+  }
+  if (mobile === modoMobile && w === BASE_W && h === BASE_H) return;
+
+  modoMobile = mobile;
+  BASE_W = w;
+  BASE_H = h;
+
+  if (mobile) {
+    GRID_COLUNAS = 2; CARD_W = 292; CARD_H = 200;
+    CARD_GAP_X = 20;  CARD_GAP_Y = 34;
+    GRID_BOTTOM_RESERVED = MOB_BOTTOM_RESERVED;
+  } else {
+    GRID_COLUNAS = 3; CARD_W = 270; CARD_H = 185;
+    CARD_GAP_X = 20;  CARD_GAP_Y = 40;
+    GRID_BOTTOM_RESERVED = 190;
+  }
+  updateUIScale();
+}
+
+// posição dos 3 botões (Sem grupo / Limpar / Salvar)
+function glBotoes() {
+  const gridW = (GRID_COLUNAS * CARD_W) + ((GRID_COLUNAS - 1) * CARD_GAP_X);
+  const xLeft = (BASE_W - gridW) / 2;
+  const w = modoMobile ? 190 : 160;
+  const h = modoMobile ? 58 : 50;
+  const gap = modoMobile ? 12 : 20;
+  const totalRowW = (w * 3) + (gap * 2);
+  const rowX = xLeft + (gridW - totalRowW) / 2;
+  const y = modoMobile ? BASE_H - 140 : BASE_H - 120;
+  return { w, h, gap, y, rowX, xSem: rowX, xLimpar: rowX + (w + gap), xSalvar: rowX + 2 * (w + gap) };
+}
+
+// painel "Combinação atual" no celular (faixa embaixo das cartas)
+function glPainelMobile() {
+  const h = MOB_PANEL_H;
+  return { x: 15, y: BASE_H - 140 - 12 - h, w: BASE_W - 30, h };
+}
+
+function glSelecionarRestantes() {
+  if (modoMobile) {
+    const p = glPainelMobile();
+    const w = 380, h = 60;
+    return { x: BASE_W / 2 - w / 2, y: p.y + 88, w, h };
+  }
+  const gridW = (GRID_COLUNAS * CARD_W) + ((GRID_COLUNAS - 1) * CARD_GAP_X);
+  const xLeft = (BASE_W - gridW) / 2;
+  const w = 240, h = 46;
+  return { x: xLeft + (gridW - w) / 2, y: BASE_H - 180, w, h };
+}
+
+function glFinalizar() {
+  if (modoMobile) {
+    const p = glPainelMobile();
+    const w = 240, h = 60;
+    return { x: BASE_W / 2 - w / 2, y: p.y + 88, w, h };
+  }
+  return { x: BASE_W - 180, y: BASE_H - 140, w: 160, h: 50 };
+}
+
+// miniaturas da combinação atual no celular (2 linhas x 6 colunas)
+const MOB_MINI_MAX = 12;
+function glMiniMobile(i) {
+  const p = glPainelMobile();
+  const cols = 6, pad = 10, gap = 8;
+  const miniW = Math.floor((p.w - pad * 2 - gap * (cols - 1)) / cols);
+  const miniH = Math.round(miniW * (154 / 225));
+  const col = i % cols;
+  const row = Math.floor(i / cols);
+  if (row >= 2) return null;
+  return { x: p.x + pad + col * (miniW + gap), y: p.y + 34 + row * (miniH + gap), w: miniW, h: miniH };
+}
+
+// ---- cartas mais claras em aparelhos touch (só visual; não muda dados) ----
+const _cacheBrilho = new WeakMap();
+
+function imgParaCarta(id) {
+  const img = imagensCartas[id];
+  if (!BRILHO_NO_CELULAR || !ehTouch() || !img || img.width <= 1) return img;
+  let b = _cacheBrilho.get(img);
+  if (!b) {
+    b = clarearImagem(img);
+    _cacheBrilho.set(img, b);
+  }
+  return b;
+}
+
+function clarearImagem(src) {
+  const w = 600;
+  const h = Math.round(w * src.height / src.width);
+  const out = createImage(w, h);
+  out.copy(src, 0, 0, src.width, src.height, 0, 0, w, h);
+  out.loadPixels();
+
+  const lut = new Uint8ClampedArray(256);
+  for (let v = 0; v < 256; v++) lut[v] = 255 * Math.pow(v / 255, BRILHO_GAMMA);
+
+  const px = out.pixels;
+  for (let i = 0; i < px.length; i += 4) {
+    const B = lut[px[i + 2]];
+    const lift = B * 0.4;                       // azul puro vira azul mais claro (mais visível)
+    px[i]     = Math.max(lut[px[i]], lift);
+    px[i + 1] = Math.max(lut[px[i + 1]], lift);
+    px[i + 2] = B;
+  }
+  out.updatePixels();
+  return out;
+}
 
 function updateUIScale() {
   uiScale = min(width / BASE_W, height / BASE_H);
@@ -105,6 +243,8 @@ function preload() {
 
 // ---------- SETUP ----------
 function setup() {
+  refW = windowWidth;
+  refH = windowHeight;
   const cnv = createCanvas(windowWidth, windowHeight);
   cnv.parent('gameHolder'); // put canvas inside the holder DIV
 
@@ -145,6 +285,7 @@ function setup() {
 
 // ---------- DRAW (Função principal) ----------
 function draw() {
+  sincronizarLayout();
   background(255);
 
   push();
@@ -323,13 +464,13 @@ function drawJogo() {
     textAlign(CENTER, CENTER);
 
     // --- Layout numbers (safe to tweak) ---
-    const inputW = 260;     // requested
-    const inputH = 34;      // visual height
-    const gap = 14;
+    const inputW = modoMobile ? 400 : 260;
+    const inputH = modoMobile ? 54 : 34;
+    const gap = modoMobile ? 18 : 14;
 
     const panelPadding = 24;
     const panelW = inputW + panelPadding * 2;
-    const panelH = 270;
+    const panelH = modoMobile ? 400 : 270;
 
     const panelX = BASE_W / 2 - panelW / 2;
     const panelY = BASE_H / 2 - panelH / 2 + 10;
@@ -344,7 +485,7 @@ function drawJogo() {
 
     // Title ABOVE the panel
     fill(0);
-    textSize(18);
+    textSize(modoMobile ? 20 : 18);
     text("Insira seu nome para começar", BASE_W / 2, panelY - 25);
 
     // Create HTML elements once
@@ -365,31 +506,10 @@ function drawJogo() {
       inputEscolaridade.parent(uiLayer);
       inputEscolaridade.attribute('placeholder', 'Digite sua escolaridade');
 
-      // Shared input styles (important: border-box + fixed height)
-      const styleInput = (el) => {
-        el.style('box-sizing', 'border-box');
-        el.style('width', inputW + 'px');
-        el.style('height', inputH + 'px');
-        el.style('line-height', inputH + 'px');
-        el.style('padding', '0 10px'); // horizontal padding only
-        el.style('font-size', '16px');
-        el.style('border', '2px solid #000');
-        el.style('border-radius', '10px');
-        el.style('outline', 'none');
-        el.style('background', '#fff');
-        el.style('display', 'block');
-      };
-
-      styleInput(inputUsuario);
-      styleInput(inputIdade);
-      styleInput(inputEscolaridade);
-
       // Button
       botaoCriarUsuario = createButton('Começar');
       botaoCriarUsuario.parent(uiLayer);
       botaoCriarUsuario.style('box-sizing', 'border-box');
-      botaoCriarUsuario.style('padding', '10px 18px');
-      botaoCriarUsuario.style('font-size', '14px');
       botaoCriarUsuario.style('border', '2px solid #000');
       botaoCriarUsuario.style('border-radius', '12px');
       botaoCriarUsuario.style('background', '#64c864');
@@ -399,6 +519,35 @@ function drawJogo() {
       botaoCriarUsuario.mouseOut(() => botaoCriarUsuario.style('background', '#64c864'));
 
       botaoCriarUsuario.mousePressed(criarUsuario);
+
+      loginEstiloModo = null; // força aplicar estilos abaixo
+    }
+
+    // Estilos (reaplicados se o layout mudar, ex.: girar o celular)
+    if (loginEstiloModo !== modoMobile) {
+      // Shared input styles (important: border-box + fixed height)
+      // font-size >= 16px evita o zoom automático do iPhone ao focar
+      const loginFont = modoMobile ? 24 : 16;
+      const styleInput = (el) => {
+        el.style('box-sizing', 'border-box');
+        el.style('width', inputW + 'px');
+        el.style('height', inputH + 'px');
+        el.style('line-height', inputH + 'px');
+        el.style('padding', '0 10px'); // horizontal padding only
+        el.style('font-size', loginFont + 'px');
+        el.style('border', '2px solid #000');
+        el.style('border-radius', '10px');
+        el.style('outline', 'none');
+        el.style('background', '#fff');
+        el.style('display', 'block');
+      };
+      styleInput(inputUsuario);
+      styleInput(inputIdade);
+      styleInput(inputEscolaridade);
+
+      botaoCriarUsuario.style('padding', modoMobile ? '14px 30px' : '10px 18px');
+      botaoCriarUsuario.style('font-size', modoMobile ? '24px' : '14px');
+      loginEstiloModo = modoMobile;
     }
 
     // Ensure width (height is CSS-controlled)
@@ -408,7 +557,7 @@ function drawJogo() {
 
     // Position HTML elements every frame using BASE coords (uiLayer handles scaling)
     const xLeft = panelX + panelPadding;
-    const yStart = panelY + 55;
+    const yStart = panelY + (modoMobile ? 70 : 55);
 
     const realH = inputUsuario.elt.offsetHeight || inputH;
 
@@ -797,7 +946,7 @@ const gridAreaX = 20; // left margin
 const gridAreaW = (panelX - PANEL_GAP) - gridAreaX;
 
 // centre grid inside that area
-const xInicial = gridAreaX + (gridAreaW - gridLargura) / 2;
+const xInicial = modoMobile ? (BASE_W - gridLargura) / 2 : gridAreaX + (gridAreaW - gridLargura) / 2;
 
 
   // --- calcula altura total do conteúdo e limite do scroll ---
@@ -858,7 +1007,7 @@ const xInicial = gridAreaX + (gridAreaW - gridLargura) / 2;
       if (estaSalva) tint(255, 100);
       else noTint();
 
-      image(img, c.x, yDraw, CARD_W, CARD_H);
+      image(imgParaCarta(c.id), c.x, yDraw, CARD_W, CARD_H);
       noTint();
 
       drawingContext.restore();
@@ -991,24 +1140,13 @@ const my = scaledPointerY();
     // -------------------------------------------------------
     // (Tem que vir ANTES do clique nas cartas, senão você pode
     // clicar no botão e ele tentar clicar numa carta por baixo.)
-    const btnW = 160, btnH = 50;
-    const btnGap = 20;
+    const BT = glBotoes();
+    const btnW = BT.w, btnH = BT.h;
+    const btnY = BT.y;
 
-    // largura do grid das cartas (3 colunas)
-    const gridW = (GRID_COLUNAS * CARD_W) + ((GRID_COLUNAS - 1) * CARD_GAP_X);
-    const xLeft = (BASE_W - gridW) / 2;
-
-    // linha de 3 botões centralizada dentro do grid
-    const totalRowW = (btnW * 3) + (btnGap * 2);
-    const rowX = xLeft + (gridW - totalRowW) / 2;
-
-    // posiciona dentro da área reservada de baixo
-    // (ajuste o -120 se quiser mais alto/baixo)
-    const btnY = BASE_H - 120;
-
-    const xSemGrupo = rowX;
-    const xLimpar = rowX + (btnW + btnGap);
-    const xSalvar = rowX + 2 * (btnW + btnGap);
+    const xSemGrupo = BT.xSem;
+    const xLimpar = BT.xLimpar;
+    const xSalvar = BT.xSalvar;
 
     // Clique em "Carta sem grupo"
     if (
@@ -1067,14 +1205,12 @@ const my = scaledPointerY();
   if (combinacaoAtual.length === 0) {
     const restantes = cartas.length - cartasSalvas.length;
     if (restantes > 0) {
-      const gridW = (GRID_COLUNAS * CARD_W) + ((GRID_COLUNAS - 1) * CARD_GAP_X);
-      const xLeft = (BASE_W - gridW) / 2;
+      const RS = glSelecionarRestantes();
+      const w = RS.w;
+      const h = RS.h;
 
-      const w = 240;
-      const h = 46;
-
-      const x = xLeft + (gridW - w) / 2;
-      const y = BASE_H - 180;
+      const x = RS.x;
+      const y = RS.y;
 
       if (mx > x && mx < x + w && my > y && my < y + h) {
         // Seleciona todas as cartas ainda não salvas
@@ -1127,7 +1263,15 @@ if (telaAtual === "jogo" && usuario) {
     // ---------------------------------------------------------
     // REMOVER CARTA DA COMBINAÇÃO ATUAL (painel lateral - mini grid)
     // ---------------------------------------------------------
-    {
+    if (modoMobile) {
+      for (let i = 0; i < Math.min(combinacaoAtual.length, MOB_MINI_MAX); i++) {
+        const m = glMiniMobile(i);
+        if (m && mx > m.x && mx < m.x + m.w && my > m.y && my < m.y + m.h) {
+          combinacaoAtual.splice(i, 1);
+          return;
+        }
+      }
+    } else {
       const B = getGridBounds();
       const panelX = B.xRight + 15;
       const panelW = BASE_W - panelX - 15;
@@ -1165,7 +1309,8 @@ if (telaAtual === "jogo" && usuario) {
     }
 
     // FINALIZAR
-    if (mx > BASE_W - 180 && mx < BASE_W - 20 && my > BASE_H - 140 && my < BASE_H - 90) {
+    const FZ = glFinalizar();
+    if (mx > FZ.x && mx < FZ.x + FZ.w && my > FZ.y && my < FZ.y + FZ.h) {
       if (cartasSalvas.length >= cartas.length) {
         let agora = new Date();
         const perfil = calcularPerfilCognitivo();
@@ -1260,7 +1405,60 @@ function keyPressed() {
 }
 
 // ---------- Combinação atual (PAINEL DIREITO + MINI PEQUENAS) ----------
+function drawCombinacaoMobile() {
+  const p = glPainelMobile();
+
+  noStroke();
+  fill(255, 255, 255, 220);
+  rect(p.x, p.y, p.w, p.h, 14);
+  stroke(0);
+  strokeWeight(2);
+  noFill();
+  rect(p.x, p.y, p.w, p.h, 14);
+
+  noStroke();
+  fill(0);
+  textAlign(CENTER, CENTER);
+  textSize(13);
+  const n = combinacaoAtual.length;
+  text(n > 0 ? `Combinação Atual (${n})` : "Combinação Atual", p.x + p.w / 2, p.y + 16);
+
+  if (n === 0) {
+    fill(0, 130);
+    textSize(12);
+    text("Selecione cartas\npara montar um grupo", p.x + p.w / 2, p.y + 55);
+    return;
+  }
+
+  for (let i = 0; i < Math.min(n, MOB_MINI_MAX); i++) {
+    const m = glMiniMobile(i);
+    if (!m) break;
+    const id = combinacaoAtual[i];
+
+    push();
+    drawingContext.save();
+    drawingContext.beginPath();
+    drawingContext.roundRect(m.x, m.y, m.w, m.h, 8);
+    drawingContext.clip();
+    image(imgParaCarta(id), m.x, m.y, m.w, m.h);
+    drawingContext.restore();
+    pop();
+
+    stroke(0);
+    strokeWeight(2);
+    noFill();
+    rect(m.x, m.y, m.w, m.h, 8);
+
+    noStroke();
+    fill(255);
+    textSize(11);
+    textAlign(CENTER, CENTER);
+    text(id + 1, m.x + m.w / 2, m.y + m.h - 10);
+  }
+}
+
 function drawCombinacaoAtual() {
+  if (modoMobile) { drawCombinacaoMobile(); return; }
   const B = getGridBounds();
 
   // Panel uses right margin beside the grid
@@ -1319,7 +1517,7 @@ function drawCombinacaoAtual() {
     drawingContext.beginPath();
     drawingContext.roundRect(x, y, miniW, miniH, 8);
     drawingContext.clip();
-    image(img, x, y, miniW, miniH);
+    image(imgParaCarta(id), x, y, miniW, miniH);
     drawingContext.restore();
     pop();
 
@@ -1354,19 +1552,10 @@ function drawCombinacaoAtual() {
 // ---------- Botão Sem Grupo (RESPONSIVO) ----------
 function drawBotaoSemGrupo(){
   if (combinacaoAtual.length > 0) {
-    const gridW = (GRID_COLUNAS * CARD_W) + ((GRID_COLUNAS - 1) * CARD_GAP_X);
-    const xLeft = (BASE_W - gridW) / 2;
-
-    const w = 160, h = 50, r = 10;
-    const gap = 20;
-
-    // row centred under the grid
-    const totalRowW = (w * 3) + (gap * 2);
-    const rowX = xLeft + (gridW - totalRowW) / 2;
-
-    const y = BASE_H - 120; // inside bottom reserved area
-
-    const x = rowX; // left button
+    const B = glBotoes();
+    const w = B.w, h = B.h, r = 10;
+    const x = B.xSem;   // left button
+    const y = B.y;
 
     const mx = scaledMouseX();
     const my = scaledMouseY();
@@ -1392,18 +1581,10 @@ function drawBotaoSemGrupo(){
 // ---------- Botão Limpar Seleção (RESPONSIVO) ----------
 function drawBotaoLimpar(){
   if (combinacaoAtual.length > 0) {
-    const gridW = (GRID_COLUNAS * CARD_W) + ((GRID_COLUNAS - 1) * CARD_GAP_X);
-    const xLeft = (BASE_W - gridW) / 2;
-
-    const w = 160, h = 50, r = 10;
-    const gap = 20;
-
-    const totalRowW = (w * 3) + (gap * 2);
-    const rowX = xLeft + (gridW - totalRowW) / 2;
-
-    const y = BASE_H - 120;
-
-    const x = rowX + (w + gap); // middle button
+    const B = glBotoes();
+    const w = B.w, h = B.h, r = 10;
+    const x = B.xLimpar;   // middle button
+    const y = B.y;
 
     const mx = scaledMouseX();
     const my = scaledMouseY();
@@ -1434,16 +1615,8 @@ function drawBotaoSelecionarRestantes() {
   const mx = scaledMouseX();
   const my = scaledMouseY();
 
-  // Layout alinhado com o grid
-  const gridW = (GRID_COLUNAS * CARD_W) + ((GRID_COLUNAS - 1) * CARD_GAP_X);
-  const xLeft = (BASE_W - gridW) / 2;
-
-  const w = 240;
-  const h = 46;
-  const r = 10;
-
-  const x = xLeft + (gridW - w) / 2;
-  const y = BASE_H - 180; // <- mais alto, não briga com os botões de salvar/limpar/sem grupo
+  const R = glSelecionarRestantes();
+  const x = R.x, y = R.y, w = R.w, h = R.h, r = 10;
 
   if (mx > x && mx < x + w && my > y && my < y + h) {
     fill(220, 220, 255);
@@ -1458,7 +1631,7 @@ function drawBotaoSelecionarRestantes() {
 
   fill(0);
   noStroke();
-  textSize(12);
+  textSize(modoMobile ? 13 : 12);
   textAlign(CENTER, CENTER);
   text(`Selecionar todas restantes (${restantes})`, x + w / 2, y + h / 2);
 }
@@ -1467,18 +1640,10 @@ function drawBotaoSelecionarRestantes() {
 
 // ---------- Botão salvar (RESPONSIVO) ----------
 function drawBotaoSalvar(){
-  const gridW = (GRID_COLUNAS * CARD_W) + ((GRID_COLUNAS - 1) * CARD_GAP_X);
-  const xLeft = (BASE_W - gridW) / 2;
-
-  const w = 160, h = 50, r = 10;
-  const gap = 20;
-
-  const totalRowW = (w * 3) + (gap * 2);
-  const rowX = xLeft + (gridW - totalRowW) / 2;
-
-  const y = BASE_H - 120;
-
-  const x = rowX + 2 * (w + gap); // right button
+  const B = glBotoes();
+  const w = B.w, h = B.h, r = 10;
+  const x = B.xSalvar;   // right button
+  const y = B.y;
 
   const mx = scaledMouseX();
   const my = scaledMouseY();
@@ -1504,7 +1669,8 @@ function drawBotaoFinalizar() {
   const my = scaledMouseY();
 
   if (cartasSalvas.length >= cartas.length && !jogoFinalizado) {
-    let x = BASE_W - 180, y = BASE_H - 140, w = 160, h = 50, r = 10;
+    const F = glFinalizar();
+    let x = F.x, y = F.y, w = F.w, h = F.h, r = 10;
 
     if (mx > x && mx < x + w && my > y && my < y + h) {
       fill(255, 170, 170);
@@ -1625,11 +1791,18 @@ function drawProgresso() {
 
   textSize(15);
   textStyle(NORMAL);
-  text("Combinações\nsalvas: " + historico.length, xPosText, yPos);
+  if (modoMobile) {
+    // lado a lado, na base da tela
+    text("Combinações\nsalvas: " + historico.length, 30, BASE_H - 62);
+    textStyle(BOLD);
+    text(`Cartas\nSalvas: ${cartasSalvas.length}/${cartas.length}`, 340, BASE_H - 62);
+  } else {
+    text("Combinações\nsalvas: " + historico.length, xPosText, yPos);
 
-  textSize(15);
-  textStyle(BOLD);
-  text(`Cartas\nSalvas: ${cartasSalvas.length}/${cartas.length}`, xPosText, yPos + 50);
+    textSize(15);
+    textStyle(BOLD);
+    text(`Cartas\nSalvas: ${cartasSalvas.length}/${cartas.length}`, xPosText, yPos + 50);
+  }
 
   textStyle(NORMAL);
   textAlign(CENTER, CENTER);
@@ -1641,22 +1814,29 @@ function drawNavegacao() {
   fill(0);
   textAlign(CENTER, CENTER);
 
-  const topY = 40;
+  const topY = modoMobile ? 30 : 40;
+  // no celular o botão "Desistir" ocupa o canto esquerdo
+  const cx = modoMobile ? (150 + BASE_W) / 2 : BASE_W / 2;
 
   // Main hint
-  textSize(15);
-  text("Role para ver mais cartas", BASE_W / 2, topY);
+  if (modoMobile) {
+    textSize(11);
+    text("Deslize para ver mais cartas", cx, topY);
+  } else {
+    textSize(15);
+    text("Role para ver mais cartas", cx, topY);
 
-  // Optional: keyboard hint (smaller, calmer)
-  textSize(12);
-  text("Mouse wheel ou ↑ ↓", BASE_W / 2, topY + 22);
+    // Optional: keyboard hint (smaller, calmer)
+    textSize(12);
+    text("Mouse wheel ou ↑ ↓", cx, topY + 22);
+  }
 
   // -------- Scroll progress bar (subtle but VERY helpful) --------
   if (maxScrollY > 0) {
-    const barW = 220;
-    const barH = 6;
-    const barX = BASE_W / 2 - barW / 2;
-    const barY = topY + 42;
+    const barW = modoMobile ? 200 : 220;
+    const barH = modoMobile ? 8 : 6;
+    const barX = cx - barW / 2;
+    const barY = modoMobile ? topY + 22 : topY + 42;
 
     // background
     noStroke();
@@ -1915,16 +2095,17 @@ function exportarCSVGlobal(){
   a.attribute("download","historico_completo.csv"); a.hide(); a.elt.click();
 }
 
-let _lastWinW = 0;
 function windowResized() {
   // On Android the keyboard shrinks window height; re-scaling then would make
   // the whole form tiny while typing. Skip when only the height changed
   // and a text field is focused.
   const ae = document.activeElement;
   const typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA');
-  if (typing && windowWidth === _lastWinW) return;
-  _lastWinW = windowWidth;
+  if (typing && windowWidth === refW) return;
+  refW = windowWidth;
+  refH = windowHeight;
   resizeCanvas(windowWidth, windowHeight);
+  sincronizarLayout();
   updateUIScale();
   applyUITransform();
 }
