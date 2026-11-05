@@ -86,6 +86,7 @@ const MOB_PANEL_H = 170;
 const BRILHO_NO_CELULAR = true;   // clareia as cartas (espectrogramas escuros) em aparelhos touch
 const BRILHO_GAMMA = 0.6;         // menor = mais claro
 
+const TELAS_MOBILE = ["inicio", "historia", "jogo", "fim"];
 let modoMobile = false;
 let refW = 0, refH = 0;
 let loginEstiloModo = null;
@@ -99,7 +100,7 @@ function ehCelularRetrato() {
 }
 
 function sincronizarLayout() {
-  const mobile = (telaAtual === "jogo") && ehCelularRetrato();
+  const mobile = TELAS_MOBILE.includes(telaAtual) && ehCelularRetrato();
   let w = 1400, h = 900;
   if (mobile) {
     w = MOB_BASE_W;
@@ -309,7 +310,68 @@ function draw() {
 
 
 // ---------- Tela Inicial (RESPONSIVO) ----------
+function drawInicioMobile() {
+  const mx = scaledMouseX();
+  const my = scaledMouseY();
+
+  textFont(myFont);
+  if (imgFundo) image(imgFundo, 0, 0, BASE_W, BASE_H); else background(255);
+
+  const top = menuMobileTop();
+  const dol = imgsMobile.menuGolfinho;
+  const tit = imgsMobile.menuTitulo;
+
+  if (dol && dol.width > 1) {
+    const dw = 220, dh = dol.height * dw / dol.width;
+    image(dol, BASE_W / 2 - dw / 2, top, dw, dh);
+  }
+  if (tit && tit.width > 1) {
+    const tw = 560, th = tit.height * tw / tit.width;
+    drawingContext.imageSmoothingEnabled = false;   // mantém o visual "pixel"
+    image(tit, BASE_W / 2 - tw / 2, top + 148, tw, th);
+    drawingContext.imageSmoothingEnabled = true;
+  }
+
+  // Botão Iniciar Jogo
+  const L = getMenuLayout();
+  if (mx > L.x && mx < L.x + L.w && my > L.y1 && my < L.y1 + L.h) {
+    fill(120, 220, 255);
+    cursor(HAND);
+  } else {
+    fill(100, 200, 250);
+  }
+  stroke(0);
+  strokeWeight(2);
+  rect(L.x, L.y1, L.w, L.h, L.r);
+  noStroke();
+  fill(0);
+  textAlign(CENTER, CENTER);
+  textSize(20);
+  text("Iniciar Jogo", BASE_W / 2, L.y1 + L.h / 2);
+
+  // Créditos (embaixo, quebrados em linhas) + logo acima
+  textSize(11);
+  const linhasCred = wrapTextLines("Desenvolvido por: Julia Forli, Juliane Santos e Francisco Figueiredo", 580);
+  const leadCred = 18;
+  const credH = linhasCred.length * leadCred;
+  const credTop = BASE_H - 24 - credH;
+
+  if (imgLogoLab) {
+    const logoW = 170;
+    const logoH = imgLogoLab.height * (logoW / imgLogoLab.width);
+    image(imgLogoLab, BASE_W / 2 - logoW / 2, credTop - 16 - logoH, logoW, logoH);
+  }
+
+  fill(0);
+  textAlign(CENTER, TOP);
+  for (let i = 0; i < linhasCred.length; i++) {
+    text(linhasCred[i], BASE_W / 2, credTop + i * leadCred);
+  }
+  textAlign(CENTER, CENTER);
+}
+
 function drawInicio() {
+  if (modoMobile) { drawInicioMobile(); return; }
   const mx = scaledMouseX();
   const my = scaledMouseY();
 
@@ -599,15 +661,8 @@ function drawJogo() {
 
 
 // ---------- Tela Final do Jogo (RESPONSIVO + RESULTADO) ----------
-function drawTelaFim() {
-  const mx = scaledMouseX();
-  const my = scaledMouseY();
-
-  // Fundo
-  if (imgFundo) image(imgFundo, 0, 0, BASE_W, BASE_H);
-  else background(255);
-
-  // ---------- Textos ----------
+// Textos da tela final (usados no desktop e no celular)
+function textosFim() {
   const perfil = calcularPerfilCognitivo(); // "lumper" | "splitter" | null
 
   const textoExplicacao =
@@ -636,6 +691,214 @@ function drawTelaFim() {
     "Na ciência, ambos são importantes e complementares.\n\n" +
     "Obrigada por contribuir com a pesquisa —\n" +
     "e por ajudar os golfinhos 💙";
+
+  return { textoExplicacao, textoResultado, textoFechamento };
+}
+
+let fimLayout = null;   // retângulos dos botões da tela final (celular), usados no clique
+
+function drawTelaFimMobile() {
+  const mx = scaledMouseX();
+  const my = scaledMouseY();
+
+  if (imgFundo) image(imgFundo, 0, 0, BASE_W, BASE_H);
+  else background(255);
+
+  const { textoExplicacao, textoResultado, textoFechamento } = textosFim();
+
+  // título
+  textFont(myFont);
+  textStyle(NORMAL);
+  noStroke();
+  fill(0);
+  textAlign(CENTER, TOP);
+  textSize(22);
+  text("Obrigada por participar!", BASE_W / 2, 28);
+
+  const bodyFont = "Arial";   // Arial existe no iOS e no Android (Verdana não existe no Android)
+  const boxX = 20, boxW = 600, boxY = 78;
+  const margem = 28;
+  const maxW = boxW - margem * 2;
+  const reservedBelow = 360;                       // resumo + e-mail + botões
+  const availBox = BASE_H - boxY - reservedBelow;
+
+  let bodySize = 18, leading = 28;
+  const medir = () => {
+    textFont(bodyFont);
+    textStyle(NORMAL);
+    textSize(bodySize);
+    const e = wrapTextLines(textoExplicacao, maxW).length * leading;
+    const r = wrapTextLines(textoResultado, maxW).length * leading;
+    const c = wrapTextLines(textoFechamento, maxW).length * leading;
+    return e + 30 + r + c + (14 + 12 + 14);
+  };
+  while (medir() + 44 > availBox && bodySize > 13) {
+    bodySize -= 1;
+    leading = Math.max(19, leading - 1);
+  }
+  const boxH = Math.min(availBox, medir() + 44);
+
+  // painel
+  noStroke();
+  fill(255, 255, 255, 228);
+  rect(boxX, boxY, boxW, boxH, 18);
+  stroke(0);
+  strokeWeight(2);
+  noFill();
+  rect(boxX, boxY, boxW, boxH, 18);
+  noStroke();
+
+  // conteúdo
+  let cy = boxY + 22;
+  fill(0);
+  textFont(bodyFont);
+  textStyle(NORMAL);
+  textSize(bodySize);
+  textLeading(leading);
+  textAlign(LEFT, TOP);
+  cy += drawWrappedText(textoExplicacao, boxX + margem, cy, maxW, leading);
+  cy += 14;
+
+  textFont(myFont);
+  textAlign(CENTER, TOP);
+  textSize(16);
+  text("Seu resultado", BASE_W / 2, cy);
+  cy += 30;
+
+  textFont(bodyFont);
+  textSize(bodySize);
+  textAlign(CENTER, TOP);
+  const resLines = wrapTextLines(textoResultado, maxW);
+  for (let i = 0; i < resLines.length; i++) text(resLines[i], BASE_W / 2, cy + i * leading);
+  cy += resLines.length * leading + 14;
+
+  const closeLines = wrapTextLines(textoFechamento, maxW);
+  for (let i = 0; i < closeLines.length; i++) text(closeLines[i], BASE_W / 2, cy + i * leading);
+
+  // resumo
+  let y = boxY + boxH + 12;
+  const m = floor(tempoJogo / 60), s = tempoJogo % 60;
+  textFont(bodyFont);
+  textStyle(NORMAL);
+  textAlign(CENTER, TOP);
+  const resumo = `Usuário: ${usuario}  •  Tempo: ${nf(m, 2)}:${nf(s, 2)}  •  Combinações: ${historico.length}`;
+  textSize(12);
+  if (textWidth(resumo) > 590) textSize(10);
+  text(resumo, BASE_W / 2, y);
+  y += 32;
+
+  // e-mail opcional
+  textFont(myFont);
+  textAlign(CENTER, TOP);
+  textSize(13);
+  fill(0);
+  const intro = wrapTextLines("Se quiser receber os resultados desta pesquisa no futuro, deixe seu e-mail abaixo (opcional):", 580);
+  for (let i = 0; i < intro.length; i++) text(intro[i], BASE_W / 2, y + i * 22);
+  y += intro.length * 22 + 14;
+
+  // depois de enviado, não deixa o campo de e-mail reaparecer
+  if (emailEnviado && inputEmail) {
+    inputEmail.remove();
+    inputEmail = null;
+  }
+
+  // input (recriado se vier do layout de desktop)
+  if (inputEmail && inputEmail._modo !== "m") {
+    inputEmail.remove();
+    inputEmail = null;
+  }
+  if (!inputEmail && !emailEnviado) {
+    inputEmail = createInput("");
+    inputEmail._modo = "m";
+    inputEmail.attribute("placeholder", "seuemail@exemplo.com");
+    inputEmail.style("width", "520px");
+    inputEmail.style("height", "54px");
+    inputEmail.style("padding", "0 14px");
+    inputEmail.style("font-size", "22px");   // >= 16px evita zoom automático no iPhone
+    inputEmail.style("border", "2px solid #000");
+    inputEmail.style("border-radius", "10px");
+    inputEmail.style("background", "#fff");
+    inputEmail.style("box-sizing", "border-box");
+    inputEmail.style("pointer-events", "auto");
+    inputEmail.parent(uiLayer);
+  }
+
+  const btnW = 260, btnH = 54;
+  const btnX = BASE_W / 2 - btnW / 2;
+  let btnY = y;
+  let stackEnd;
+
+  if (!emailEnviado) {
+    if (inputEmail) inputEmail.position(BASE_W / 2 - 260, y);
+    btnY = y + 54 + 14;
+
+    if (mx > btnX && mx < btnX + btnW && my > btnY && my < btnY + btnH) {
+      fill(200, 240, 200);
+      cursor(HAND);
+    } else {
+      fill(180, 220, 180);
+    }
+    stroke(0);
+    strokeWeight(2);
+    rect(btnX, btnY, btnW, btnH, 10);
+    noStroke();
+    fill(0);
+    textAlign(CENTER, CENTER);
+    textSize(15);
+    text("Enviar e-mail", btnX + btnW / 2, btnY + btnH / 2);
+    stackEnd = btnY + btnH;
+  } else {
+    fill(0);
+    textSize(14);
+    textAlign(CENTER, TOP);
+    text("Obrigada!\nEnviaremos nossos achados :)", BASE_W / 2, y);
+    stackEnd = y + 40;
+  }
+
+  if (erroEmail !== "") {
+    fill(255, 0, 0);
+    textSize(12);
+    textAlign(CENTER, TOP);
+    text(erroEmail, BASE_W / 2, stackEnd + 8);
+    stackEnd += 24;
+  }
+
+  // Voltar ao início
+  const bw = 300, bh = 56;
+  const bx = BASE_W / 2 - bw / 2;
+  const by = Math.max(stackEnd + 18, BASE_H - bh - 22);
+
+  if (mx > bx && mx < bx + bw && my > by && my < by + bh) {
+    fill(200, 220, 255);
+    cursor(HAND);
+  } else {
+    fill(180, 200, 250);
+  }
+  stroke(0);
+  strokeWeight(2);
+  rect(bx, by, bw, bh, 12);
+  noStroke();
+  fill(0);
+  textFont(myFont);
+  textAlign(CENTER, CENTER);
+  textSize(15);
+  text("Voltar ao Início", bx + bw / 2, by + bh / 2);
+
+  fimLayout = { btn: { x: btnX, y: btnY, w: btnW, h: btnH }, back: { x: bx, y: by, w: bw, h: bh } };
+}
+
+function drawTelaFim() {
+  if (modoMobile) { drawTelaFimMobile(); return; }
+  if (inputEmail && inputEmail._modo === "m") { inputEmail.remove(); inputEmail = null; }
+  const mx = scaledMouseX();
+  const my = scaledMouseY();
+
+  // Fundo
+  if (imgFundo) image(imgFundo, 0, 0, BASE_W, BASE_H);
+  else background(255);
+
+  // ---------- Textos ----------
+  const { textoExplicacao, textoResultado, textoFechamento } = textosFim();
 
   // ---------- Painel ----------
   const boxW = 880;
@@ -772,6 +1035,12 @@ text(
   BASE_W / 2,
   emailY
 );
+
+// depois de enviado, não deixa o campo de e-mail reaparecer
+if (emailEnviado && inputEmail) {
+  inputEmail.remove();
+  inputEmail = null;
+}
 
 // Cria o input uma única vez
 if (!inputEmail && !emailEnviado) {
@@ -1345,7 +1614,28 @@ if (telaAtual === "jogo" && usuario) {
   // --------------------------
 // TELA FIM
 // --------------------------
-if (telaAtual === "fim") {
+if (telaAtual === "fim" && modoMobile && fimLayout) {
+  const B = fimLayout.btn, V = fimLayout.back;
+
+  if (!emailEnviado && inputEmail && mx > B.x && mx < B.x + B.w && my > B.y && my < B.y + B.h) {
+    const email = inputEmail.value().trim();
+    if (!emailValido(email)) {
+      erroEmail = "Por favor, insira um e-mail válido.";
+      return;
+    }
+    enviarEmailPesquisa(email);
+    inputEmail.remove();
+    inputEmail = null;
+    return;
+  }
+
+  if (mx > V.x && mx < V.x + V.w && my > V.y && my < V.y + V.h) {
+    resetarParaInicio();
+    return;
+  }
+}
+
+if (telaAtual === "fim" && !modoMobile) {
   const bw = 240;
   const bh = 52;
   const bx = BASE_W / 2 - bw / 2;
@@ -2135,7 +2425,15 @@ function applyUITransform() {
 
 
 
+function menuMobileTop() {
+  return Math.max(50, Math.round((BASE_H - 560 - 280) / 2));
+}
+
 function getMenuLayout() {
+  if (modoMobile) {
+    const w = 380, h = 84, r = 14;
+    return { x: BASE_W / 2 - w / 2, w, h, r, y1: menuMobileTop() + 447, y2: -9999, y3: -9999 };
+  }
   const w = 240;      // button width
   const h = 60;       // button height
   const r = 12;       // corner radius
