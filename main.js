@@ -372,7 +372,7 @@ function drawJogo() {
         el.style('height', inputH + 'px');
         el.style('line-height', inputH + 'px');
         el.style('padding', '0 10px'); // horizontal padding only
-        el.style('font-size', '13px');
+        el.style('font-size', '16px');
         el.style('border', '2px solid #000');
         el.style('border-radius', '10px');
         el.style('outline', 'none');
@@ -631,12 +631,12 @@ if (!inputEmail && !emailEnviado) {
 
   inputEmail.style("width", "320px");
   inputEmail.style("padding", "8px");
-  inputEmail.style("font-size", "14px");
+  inputEmail.style("font-size", "16px");
   inputEmail.style("border", "2px solid #000");
   inputEmail.style("border-radius", "8px");
   inputEmail.style("background", "#fff");
   inputEmail.style("box-sizing", "border-box");
-  inputUsuario.style('pointer-events', 'auto');
+  inputEmail.style('pointer-events', 'auto');
 
   // IMPORTANT: parent to uiLayer so it scales with the game
   inputEmail.parent(uiLayer);
@@ -1915,7 +1915,15 @@ function exportarCSVGlobal(){
   a.attribute("download","historico_completo.csv"); a.hide(); a.elt.click();
 }
 
+let _lastWinW = 0;
 function windowResized() {
+  // On Android the keyboard shrinks window height; re-scaling then would make
+  // the whole form tiny while typing. Skip when only the height changed
+  // and a text field is focused.
+  const ae = document.activeElement;
+  const typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA');
+  if (typing && windowWidth === _lastWinW) return;
+  _lastWinW = windowWidth;
   resizeCanvas(windowWidth, windowHeight);
   updateUIScale();
   applyUITransform();
@@ -2053,7 +2061,20 @@ function emailValido(email) {
 // - Drag inside scroll area = scroll
 // - Tap inside scroll area = select card
 // ---------------------------
+// True when the touch started on a real DOM control (input / button / link).
+// For those we must NOT call preventDefault, otherwise mobile browsers never
+// focus the field (so the keyboard never opens) and never fire the click.
+function isDomControlEvent(event) {
+  const t = event && event.target;
+  return !!(t && t.closest && t.closest('input, textarea, select, button, a'));
+}
+
 function touchStarted(event) {
+  // Let the browser handle taps on inputs/buttons (keyboard, focus, click).
+  if (isDomControlEvent(event)) {
+    return true;
+  }
+
   // ✅ Login screen (tela jogo, mas ainda sem usuário):
   // Let the browser focus the inputs (DON'T block default).
   if (telaAtual === "jogo" && !usuario) {
@@ -2088,7 +2109,8 @@ function touchStarted(event) {
   return false; // prevent page scroll
 }
 
-function touchMoved() {
+function touchMoved(event) {
+  if (isDomControlEvent(event) || (telaAtual === "jogo" && !usuario)) return true;
   if (!isTouchScrolling) return false;
 
   const my = scaledPointerY();
@@ -2101,7 +2123,10 @@ function touchMoved() {
   return false; // stop browser scrolling
 }
 
-function touchEnded() {
+function touchEnded(event) {
+  // Returning false here calls preventDefault() on touchend, which is what
+  // stopped the keyboard from opening on the login screen.
+  if (isDomControlEvent(event) || (telaAtual === "jogo" && !usuario)) return true;
   if (!isTouchScrolling) return false;
 
   const my = scaledPointerY();
@@ -2141,4 +2166,3 @@ function scaledPointerX() {
 function scaledPointerY() {
   return (pointerY() - offsetY) / uiScale;
 }
-
