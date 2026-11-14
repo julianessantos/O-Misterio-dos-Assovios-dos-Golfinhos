@@ -213,6 +213,89 @@ function clarearImagem(src) {
   return out;
 }
 
+
+// =====================================================================
+// IDIOMA: seletor no menu, fundo/título do menu em EN/ES e carregamento de imagens
+// =====================================================================
+function glIdiomas() {
+  const w = modoMobile ? 180 : 140;
+  const h = modoMobile ? 54 : 44;
+  const gap = modoMobile ? 12 : 14;
+  const total = w * IDIOMAS.length + gap * (IDIOMAS.length - 1);
+  const x0 = BASE_W / 2 - total / 2;
+  const L = getMenuLayout();
+  const y = modoMobile ? L.y1 + L.h + 34 : 425;   // desktop: abaixo da área clicável escondida das instruções
+  return IDIOMAS.map((id, i) => ({ id, x: x0 + i * (w + gap), y, w, h }));
+}
+
+function drawSeletorIdioma() {
+  const mx = scaledMouseX();
+  const my = scaledMouseY();
+  push();
+  textFont(myFont);
+  textAlign(CENTER, CENTER);
+  for (const b of glIdiomas()) {
+    const sel = b.id === lang;
+    const hover = mx > b.x && mx < b.x + b.w && my > b.y && my < b.y + b.h;
+    if (hover) cursor(HAND);
+    if (sel) fill(255, 230, 120);
+    else if (hover) fill(235, 245, 252);
+    else fill(255, 255, 255, 215);
+    stroke(0);
+    strokeWeight(sel ? 3 : 2);
+    rect(b.x, b.y, b.w, b.h, 10);
+    noStroke();
+    fill(0);
+    const rot = IDIOMA_ROTULOS[b.id];
+    textSize(ajustarTexto(rot, b.w - 16, modoMobile ? 15 : 13));
+    text(rot, b.x + b.w / 2, b.y + b.h / 2);
+  }
+  pop();
+}
+
+function cliqueIdioma(mx, my) {
+  for (const b of glIdiomas()) {
+    if (mx > b.x && mx < b.x + b.w && my > b.y && my < b.y + b.h) {
+      setLang(b.id);
+      return true;
+    }
+  }
+  return false;
+}
+
+// Menu (computador) em EN/ES: fundo liso + golfinho + título desenhado no código
+function drawMenuFundoIdioma() {
+  image(imgFundo, 0, 0, BASE_W, BASE_H);
+  const dol = imgsMobile.menuGolfinho;
+  if (dol && dol.width > 1) {
+    const dw = 170, dh = dol.height * dw / dol.width;
+    image(dol, BASE_W / 2 - dw / 2, 40, dw, dh);
+  }
+  const titulo = t("tituloMenu").toUpperCase();
+  push();
+  textFont(myFont);
+  noStroke();
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(ajustarTexto(titulo, BASE_W - 120, 34));
+  text(titulo, BASE_W / 2, 187);
+  pop();
+}
+
+// Menu (celular) em EN/ES: título em linhas, desenhado no código
+function drawTituloMenuMobile(yTop) {
+  const titulo = t("tituloMenu").toUpperCase();
+  push();
+  textFont(myFont);
+  noStroke();
+  fill(255);
+  textAlign(CENTER, TOP);
+  textSize(32);
+  const linhas = wrapTextLines(titulo, 560);
+  for (let i = 0; i < linhas.length; i++) text(linhas[i], BASE_W / 2, yTop + i * 64);
+  pop();
+}
+
 function updateUIScale() {
   uiScale = min(width / BASE_W, height / BASE_H);
   offsetX = (width - BASE_W * uiScale) / 2;
@@ -244,6 +327,8 @@ function preload() {
 
 // ---------- SETUP ----------
 function setup() {
+  carregarImagensMobile();            // imagens do layout de celular (não travam o jogo se faltarem)
+  carregarImagensIdioma(lang);        // tutoriais do idioma atual
   refW = windowWidth;
   refH = windowHeight;
   const cnv = createCanvas(windowWidth, windowHeight);
@@ -325,7 +410,9 @@ function drawInicioMobile() {
     const dw = 220, dh = dol.height * dw / dol.width;
     image(dol, BASE_W / 2 - dw / 2, top, dw, dh);
   }
-  if (tit && tit.width > 1) {
+  if (lang !== "pt") {
+    drawTituloMenuMobile(top + 148);
+  } else if (tit && tit.width > 1) {
     const tw = 560, th = tit.height * tw / tit.width;
     drawingContext.imageSmoothingEnabled = false;   // mantém o visual "pixel"
     image(tit, BASE_W / 2 - tw / 2, top + 148, tw, th);
@@ -346,21 +433,24 @@ function drawInicioMobile() {
   noStroke();
   fill(0);
   textAlign(CENTER, CENTER);
-  textSize(20);
-  text("Iniciar Jogo", BASE_W / 2, L.y1 + L.h / 2);
+  textSize(ajustarTexto(t("iniciarJogo"), L.w - 24, 20));
+  text(t("iniciarJogo"), BASE_W / 2, L.y1 + L.h / 2);
 
   // Créditos (embaixo, quebrados em linhas) + logo acima
   textSize(11);
-  const linhasCred = wrapTextLines("Desenvolvido por: Julia Forli, Juliane Santos e Francisco Figueiredo", 580);
+  const linhasCred = wrapTextLines(t("creditos"), 580);
   const leadCred = 18;
   const credH = linhasCred.length * leadCred;
   const credTop = BASE_H - 24 - credH;
 
   if (imgLogoLab) {
-    const logoW = 170;
+    const livre = (credTop - 16) - (L.y1 + L.h + 34 + 54 + 14);   // espaço livre abaixo do seletor de idioma
+    const logoW = constrain(livre, 80, 170);
     const logoH = imgLogoLab.height * (logoW / imgLogoLab.width);
     image(imgLogoLab, BASE_W / 2 - logoW / 2, credTop - 16 - logoH, logoW, logoH);
   }
+
+  drawSeletorIdioma();
 
   fill(0);
   textAlign(CENTER, TOP);
@@ -380,14 +470,15 @@ function drawInicio() {
   textFont(myFont);
 
   // Background (virtual size)
-  image(imgMenu, 0, 0, BASE_W, BASE_H);
+  if (lang === "pt") image(imgMenu, 0, 0, BASE_W, BASE_H);
+  else drawMenuFundoIdioma();
 
   // Créditos no canto inferior direito (virtual)
   push();
   fill(0);
   textSize(11);
   textAlign(RIGHT, BOTTOM);
-  let creditos = "Desenvolvido por: Julia Forli, Juliane Santos e Francisco Figueiredo";
+  let creditos = t("creditos");
   text(creditos, BASE_W - 20, BASE_H - 20);
   pop();
 
@@ -425,7 +516,10 @@ function drawInicio() {
   }
   rect(x, y1, w, h, r);
   fill(0);
-  text("Iniciar Jogo", BASE_W / 2, y1 + h / 2)
+  textSize(ajustarTexto(t("iniciarJogo"), w - 20, 15));
+  text(t("iniciarJogo"), BASE_W / 2, y1 + h / 2);
+
+  drawSeletorIdioma();
 }
 
 
@@ -547,29 +641,29 @@ function drawJogo() {
 
     // Title ABOVE the panel
     fill(0);
-    textSize(modoMobile ? 20 : 18);
-    text("Insira seu nome para começar", BASE_W / 2, panelY - 25);
+    textSize(ajustarTexto(t("loginTitulo"), BASE_W - 30, modoMobile ? 20 : 18));
+    text(t("loginTitulo"), BASE_W / 2, panelY - 25);
 
     // Create HTML elements once
     if (!inputUsuario) {
       // Nome
       inputUsuario = createInput('');
       inputUsuario.parent(uiLayer);
-      inputUsuario.attribute('placeholder', 'Digite seu nome');
+      inputUsuario.attribute('placeholder', t('phNome'));
 
       // Idade
       inputIdade = createInput('');
       inputIdade.parent(uiLayer);
-      inputIdade.attribute('placeholder', 'Digite sua idade');
+      inputIdade.attribute('placeholder', t('phIdade'));
       inputIdade.attribute('type', 'number');
 
       // Escolaridade
       inputEscolaridade = createInput('');
       inputEscolaridade.parent(uiLayer);
-      inputEscolaridade.attribute('placeholder', 'Digite sua escolaridade');
+      inputEscolaridade.attribute('placeholder', t('phEscolaridade'));
 
       // Button
-      botaoCriarUsuario = createButton('Começar');
+      botaoCriarUsuario = createButton(t('comecar'));
       botaoCriarUsuario.parent(uiLayer);
       botaoCriarUsuario.style('box-sizing', 'border-box');
       botaoCriarUsuario.style('border', '2px solid #000');
@@ -635,9 +729,10 @@ function drawJogo() {
     // Error message inside panel (near bottom)
     if (erroLogin !== "") {
       fill(255, 0, 0);
-      textSize(12);
       textAlign(CENTER, CENTER);
-      text(erroLogin, BASE_W / 2, panelY + panelH - 18);
+      textSize(ajustarTexto(erroLogin, modoMobile ? panelW - 30 : BASE_W - 60, 12));
+      // no computador a mensagem fica logo abaixo do painel (não sobrepõe o botão)
+      text(erroLogin, BASE_W / 2, modoMobile ? panelY + panelH - 18 : panelY + panelH + 18);
     }
 
     return;
@@ -665,32 +760,14 @@ function drawJogo() {
 function textosFim() {
   const perfil = calcularPerfilCognitivo(); // "lumper" | "splitter" | null
 
-  const textoExplicacao =
-    "Em atividades como esta, existem duas estratégias principais de organização: lumpers e splitters.\n\n" +
-    "Lumpers são aqueles que criam poucos grupos, porém maiores, percebendo padrões amplos e semelhanças gerais antes dos detalhes. " +
-    "Esse tipo de pensamento ajuda a identificar estruturas maiores e relações mais globais.\n\n" +
-    "Splitters são aqueles que criam muitos grupos, porém menores, percebendo diferenças sutis e detalhes finos com muita clareza. " +
-    "Esse tipo de pensamento é essencial para identificar pequenas variações dentro de sistemas complexos.";
+  const textoExplicacao = t("fimExplicacao");
 
   let textoResultado = "";
-  if (perfil === "lumper") {
-    textoResultado =
-      "Com base nas suas escolhas, você tende a usar uma estratégia do tipo LUMPER.\n\n" +
-      "Isso significa que você percebe padrões amplos e conexões gerais com facilidade.";
-  } else if (perfil === "splitter") {
-    textoResultado =
-      "Com base nas suas escolhas, você tende a usar uma estratégia do tipo SPLITTER.\n\n" +
-      "Isso significa que você percebe diferenças sutis e detalhes finos com muita clareza.";
-  } else {
-    textoResultado =
-      "Com base nas suas escolhas, não foi possível identificar um estilo com segurança.";
-  }
+  if (perfil === "lumper") textoResultado = t("fimLumper");
+  else if (perfil === "splitter") textoResultado = t("fimSplitter");
+  else textoResultado = t("fimNenhum");
 
-  const textoFechamento =
-    "Estes estilos refletem formas diferentes de perceber e organizar padrões. " +
-    "Na ciência, ambos são importantes e complementares.\n\n" +
-    "Obrigada por contribuir com a pesquisa —\n" +
-    "e por ajudar os golfinhos 💙";
+  const textoFechamento = t("fimFechamento");
 
   return { textoExplicacao, textoResultado, textoFechamento };
 }
@@ -712,8 +789,8 @@ function drawTelaFimMobile() {
   noStroke();
   fill(0);
   textAlign(CENTER, TOP);
-  textSize(22);
-  text("Obrigada por participar!", BASE_W / 2, 28);
+  textSize(ajustarTexto(t("fimTitulo"), BASE_W - 40, 22));
+  text(t("fimTitulo"), BASE_W / 2, 28);
 
   const bodyFont = "Arial";   // Arial existe no iOS e no Android (Verdana não existe no Android)
   const boxX = 20, boxW = 600, boxY = 78;
@@ -762,7 +839,7 @@ function drawTelaFimMobile() {
   textFont(myFont);
   textAlign(CENTER, TOP);
   textSize(16);
-  text("Seu resultado", BASE_W / 2, cy);
+  text(t("seuResultado"), BASE_W / 2, cy);
   cy += 30;
 
   textFont(bodyFont);
@@ -781,7 +858,7 @@ function drawTelaFimMobile() {
   textFont(bodyFont);
   textStyle(NORMAL);
   textAlign(CENTER, TOP);
-  const resumo = `Usuário: ${usuario}  •  Tempo: ${nf(m, 2)}:${nf(s, 2)}  •  Combinações: ${historico.length}`;
+  const resumo = t("resumo", { u: usuario, t: `${nf(m, 2)}:${nf(s, 2)}`, c: historico.length });
   textSize(12);
   if (textWidth(resumo) > 590) textSize(10);
   text(resumo, BASE_W / 2, y);
@@ -792,7 +869,7 @@ function drawTelaFimMobile() {
   textAlign(CENTER, TOP);
   textSize(13);
   fill(0);
-  const intro = wrapTextLines("Se quiser receber os resultados desta pesquisa no futuro, deixe seu e-mail abaixo (opcional):", 580);
+  const intro = wrapTextLines(t("emailIntroM"), 580);
   for (let i = 0; i < intro.length; i++) text(intro[i], BASE_W / 2, y + i * 22);
   y += intro.length * 22 + 14;
 
@@ -810,7 +887,7 @@ function drawTelaFimMobile() {
   if (!inputEmail && !emailEnviado) {
     inputEmail = createInput("");
     inputEmail._modo = "m";
-    inputEmail.attribute("placeholder", "seuemail@exemplo.com");
+    inputEmail.attribute("placeholder", t("phEmail"));
     inputEmail.style("width", "520px");
     inputEmail.style("height", "54px");
     inputEmail.style("padding", "0 14px");
@@ -844,14 +921,14 @@ function drawTelaFimMobile() {
     noStroke();
     fill(0);
     textAlign(CENTER, CENTER);
-    textSize(15);
-    text("Enviar e-mail", btnX + btnW / 2, btnY + btnH / 2);
+    textSize(ajustarTexto(t("enviarEmail"), btnW - 20, 15));
+    text(t("enviarEmail"), btnX + btnW / 2, btnY + btnH / 2);
     stackEnd = btnY + btnH;
   } else {
     fill(0);
     textSize(14);
     textAlign(CENTER, TOP);
-    text("Obrigada!\nEnviaremos nossos achados :)", BASE_W / 2, y);
+    text(t("emailObrigadoM"), BASE_W / 2, y);
     stackEnd = y + 40;
   }
 
@@ -881,8 +958,8 @@ function drawTelaFimMobile() {
   fill(0);
   textFont(myFont);
   textAlign(CENTER, CENTER);
-  textSize(15);
-  text("Voltar ao Início", bx + bw / 2, by + bh / 2);
+  textSize(ajustarTexto(t("voltarInicio"), bw - 24, 15));
+  text(t("voltarInicio"), bx + bw / 2, by + bh / 2);
 
   fimLayout = { btn: { x: btnX, y: btnY, w: btnW, h: btnH }, back: { x: bx, y: by, w: bw, h: bh } };
 }
@@ -920,8 +997,8 @@ function drawTelaFim() {
   textStyle(NORMAL);
   fill(0);
   textAlign(CENTER, TOP);
-  textSize(30);
-  text("Obrigada por participar!", BASE_W / 2, 28);
+  textSize(ajustarTexto(t("fimTitulo"), BASE_W - 60, 30));
+  text(t("fimTitulo"), BASE_W / 2, 28);
 
   // ---------- Conteúdo (fonte legível) ----------
   const bodyFont = "Verdana"; // ou "Arial" se preferir
@@ -985,7 +1062,7 @@ function drawTelaFim() {
   textStyle(NORMAL);
   textAlign(CENTER, TOP);
   textSize(16);
-  text("Seu resultado", BASE_W / 2, cursorY);
+  text(t("seuResultado"), BASE_W / 2, cursorY);
   cursorY += 30;
 
   // Resultado (CENTER, fonte legível)
@@ -1018,7 +1095,7 @@ function drawTelaFim() {
   textLeading(18);
 
   text(
-    `Usuário: ${usuario}  •  Tempo: ${nf(m, 2)}:${nf(s, 2)}  •  Combinações: ${historico.length}`,
+    t("resumo", { u: usuario, t: `${nf(m, 2)}:${nf(s, 2)}`, c: historico.length }),
     BASE_W / 2,
     boxY + boxH + 10
   );
@@ -1029,9 +1106,9 @@ textFont(myFont);
 textAlign(CENTER, TOP);
 textSize(14);
 fill(0);
+textSize(ajustarTexto(t("emailIntro"), BASE_W - 60, 14));
 text(
-  "Se quiser receber os resultados desta pesquisa no futuro,\n" +
-  "deixe seu e-mail abaixo (opcional):",
+  t("emailIntro"),
   BASE_W / 2,
   emailY
 );
@@ -1045,7 +1122,7 @@ if (emailEnviado && inputEmail) {
 // Cria o input uma única vez
 if (!inputEmail && !emailEnviado) {
   inputEmail = createInput("");
-  inputEmail.attribute("placeholder", "seuemail@exemplo.com");
+  inputEmail.attribute("placeholder", t("phEmail"));
 
   inputEmail.style("width", "320px");
   inputEmail.style("padding", "8px");
@@ -1086,13 +1163,13 @@ if (!emailEnviado) {
   noStroke();
   fill(0);
   textAlign(CENTER, CENTER);
-  textSize(14);
-  text("Enviar e-mail", btnX + btnW / 2, btnY + btnH / 2);
+  textSize(ajustarTexto(t("enviarEmail"), btnW - 20, 14));
+  text(t("enviarEmail"), btnX + btnW / 2, btnY + btnH / 2);
 } else {
   fill(0);
   textSize(14);
   textAlign(CENTER, TOP);
-  text("Obrigada! 💙\nEnviaremos nossos achados :)", BASE_W / 2, emailY + 60);
+  text(t("emailObrigado"), BASE_W / 2, emailY + 60);
 }
 
 // Erro de email
@@ -1128,7 +1205,7 @@ if (erroEmail !== "") {
   textStyle(NORMAL);
   textAlign(CENTER, CENTER);
   textSize(14);
-  text("Voltar ao Início", bx + bw / 2, by + bh / 2);
+  text(t("voltarInicio"), bx + bw / 2, by + bh / 2);
 }
 
 
@@ -1143,19 +1220,19 @@ function criarUsuario() {
   
   // 1. Verifica se o nome está vazio
   if(nome === "") {
-    erroLogin = "Por favor, insira um nome.";
+    erroLogin = t("erroNome");
     return;
   }
   
     // 2. Verifica se a idade está vazia ou inválida
   if(idade === "" || idade < 1) {
-    erroLogin = "Por favor, insira uma idade válida.";
+    erroLogin = t("erroIdade");
     return;
   }
   
   // 3. Verifica se selecionou a escolaridade
   if(escolaridade === "") {
-    erroLogin = "Por favor, digite sua escolaridade.";
+    erroLogin = t("erroEscolaridade");
     return;
   }
   
@@ -1166,7 +1243,7 @@ function criarUsuario() {
   
   // 4. Verifica se esta combinação exata já existe (praticamente impossível)
   if (chaveUsuario in historicoGlobal) {
-    erroLogin = "Erro ao criar usuário. Tente novamente.";
+    erroLogin = t("erroCriar");
     return;
   }
   
@@ -1346,6 +1423,7 @@ const my = scaledPointerY();
   // TELA INÍCIO
   // --------------------------
   if (telaAtual === "inicio") {
+    if (cliqueIdioma(mx, my)) return;
     const L = getMenuLayout();
 
     if (mx > L.x && mx < L.x + L.w) {
@@ -1595,6 +1673,7 @@ if (telaAtual === "jogo" && usuario) {
           perfil_cognitivo: perfil, // <-- NEW
           combinacoes: historico
         };
+        if (ENVIAR_IDIOMA_NO_WEBHOOK) partida.idioma = lang;   // desligado por padrão (ver idioma.js)
 
         enviarPartidaWebhook(partida);
 
@@ -1620,7 +1699,7 @@ if (telaAtual === "fim" && modoMobile && fimLayout) {
   if (!emailEnviado && inputEmail && mx > B.x && mx < B.x + B.w && my > B.y && my < B.y + B.h) {
     const email = inputEmail.value().trim();
     if (!emailValido(email)) {
-      erroEmail = "Por favor, insira um e-mail válido.";
+      erroEmail = t("emailInvalido");
       return;
     }
     enviarEmailPesquisa(email);
@@ -1658,7 +1737,7 @@ if (!emailEnviado && inputEmail) {
     const email = inputEmail.value().trim();
 
     if (!emailValido(email)) {
-      erroEmail = "Por favor, insira um e-mail válido.";
+      erroEmail = t("emailInvalido");
       return;
     }
 
@@ -1711,12 +1790,12 @@ function drawCombinacaoMobile() {
   textAlign(CENTER, CENTER);
   textSize(13);
   const n = combinacaoAtual.length;
-  text(n > 0 ? `Combinação Atual (${n})` : "Combinação Atual", p.x + p.w / 2, p.y + 16);
+  text(n > 0 ? `${t("combAtual")} (${n})` : t("combAtual"), p.x + p.w / 2, p.y + 16);
 
   if (n === 0) {
     fill(0, 130);
     textSize(12);
-    text("Selecione cartas\npara montar um grupo", p.x + p.w / 2, p.y + 55);
+    text(t("selecioneCartas"), p.x + p.w / 2, p.y + 55);
     return;
   }
 
@@ -1771,13 +1850,13 @@ function drawCombinacaoAtual() {
   fill(0);
   textAlign(CENTER, CENTER);
   textSize(13);
-  text("Combinação Atual", panelX + panelW / 2, panelY + 20);
+  text(t("combAtual"), panelX + panelW / 2, panelY + 20);
 
   // empty state
   if (combinacaoAtual.length === 0) {
     fill(0, 130);
     textSize(11);
-    text("Selecione cartas\npara montar um grupo", panelX + panelW / 2, panelY + 55);
+    text(t("selecioneCartas"), panelX + panelW / 2, panelY + 55);
     return;
   }
 
@@ -1835,7 +1914,7 @@ function drawCombinacaoAtual() {
   fill(0, 120);
   textSize(10);
   textAlign(CENTER, CENTER);
-  text("Clique numa miniatura\npara remover", panelX + panelW / 2, panelY + panelH - 16);
+  text(t("cliqueMiniatura"), panelX + panelW / 2, panelY + panelH - 16);
 }
 
 
@@ -1860,9 +1939,9 @@ function drawBotaoSemGrupo(){
     rect(x, y, w, h, r);
     fill(0);
     noStroke();
-    textSize(13);
     textAlign(CENTER, CENTER);
-    text("Carta\nsem grupo", x + w/2, y + h/2);
+    textSize(ajustarTexto(t("semGrupo"), w - 16, 13));
+    text(t("semGrupo"), x + w/2, y + h/2);
   }
 }
 
@@ -1887,9 +1966,10 @@ function drawBotaoLimpar(){
 
     stroke(0); strokeWeight(2);
     rect(x, y, w, h, r);
-    fill(0); noStroke(); textSize(14);
+    fill(0); noStroke();
     textAlign(CENTER, CENTER);
-    text("Limpar\nSeleção", x + w/2, y + h/2);
+    textSize(ajustarTexto(t("limpar"), w - 16, 14));
+    text(t("limpar"), x + w/2, y + h/2);
   }
 }
 
@@ -1923,7 +2003,9 @@ function drawBotaoSelecionarRestantes() {
   noStroke();
   textSize(modoMobile ? 13 : 12);
   textAlign(CENTER, CENTER);
-  text(`Selecionar todas restantes (${restantes})`, x + w / 2, y + h / 2);
+  const _sel = t("selTodas", { n: restantes });
+  textSize(ajustarTexto(_sel, w - 20, modoMobile ? 13 : 12));
+  text(_sel, x + w / 2, y + h / 2);
 }
 
 
@@ -1946,9 +2028,10 @@ function drawBotaoSalvar(){
 
   stroke(0); strokeWeight(2);
   rect(x, y, w, h, r);
-  fill(0); noStroke(); textSize(14);
+  fill(0); noStroke();
   textAlign(CENTER, CENTER);
-  text("Salvar\nCombinação", x + w/2, y + h/2);
+  textSize(ajustarTexto(t("salvar"), w - 16, 14));
+  text(t("salvar"), x + w/2, y + h/2);
 }
 
 
@@ -1975,9 +2058,9 @@ function drawBotaoFinalizar() {
 
     fill(0);
     noStroke();
-    textSize(14);
     textAlign(CENTER, CENTER);
-    text("Finalizar\nJogo", x + w / 2, y + h / 2);
+    textSize(ajustarTexto(t("finalizar"), w - 16, 14));
+    text(t("finalizar"), x + w / 2, y + h / 2);
   }
 }
 
@@ -1991,7 +2074,7 @@ function drawTimer() {
   let tempo = jogoFinalizado ? tempoJogo : floor((millis() - tempoInicio) / 1000);
   let m = floor(tempo / 60), s = tempo % 60;
 
-  text(`Tempo: ${nf(m, 2)}:${nf(s, 2)}`, BASE_W - 100, 30);
+  text(`${t("tempo")}: ${nf(m, 2)}:${nf(s, 2)}`, BASE_W - 100, 30);
 }
 
 
@@ -2017,7 +2100,7 @@ function drawBotaoDesistir() {
   noStroke();
   textSize(13);
   textAlign(CENTER, CENTER);
-  text("Desistir", x + w / 2, y + h / 2);
+  text(t("desistir"), x + w / 2, y + h / 2);
 }
 
 
@@ -2083,15 +2166,15 @@ function drawProgresso() {
   textStyle(NORMAL);
   if (modoMobile) {
     // lado a lado, na base da tela
-    text("Combinações\nsalvas: " + historico.length, 30, BASE_H - 62);
+    text(t("combSalvas", { n: historico.length }), 30, BASE_H - 62);
     textStyle(BOLD);
-    text(`Cartas\nSalvas: ${cartasSalvas.length}/${cartas.length}`, 340, BASE_H - 62);
+    text(t("cartasSalvas", { n: `${cartasSalvas.length}/${cartas.length}` }), 340, BASE_H - 62);
   } else {
-    text("Combinações\nsalvas: " + historico.length, xPosText, yPos);
+    text(t("combSalvas", { n: historico.length }), xPosText, yPos);
 
     textSize(15);
     textStyle(BOLD);
-    text(`Cartas\nSalvas: ${cartasSalvas.length}/${cartas.length}`, xPosText, yPos + 50);
+    text(t("cartasSalvas", { n: `${cartasSalvas.length}/${cartas.length}` }), xPosText, yPos + 50);
   }
 
   textStyle(NORMAL);
@@ -2110,15 +2193,15 @@ function drawNavegacao() {
 
   // Main hint
   if (modoMobile) {
-    textSize(11);
-    text("Deslize para ver mais cartas", cx, topY);
+    textSize(ajustarTexto(t("dicaDeslizar"), 400, 11));
+    text(t("dicaDeslizar"), cx, topY);
   } else {
-    textSize(15);
-    text("Role para ver mais cartas", cx, topY);
+    textSize(ajustarTexto(t("dicaRolar"), 600, 15));
+    text(t("dicaRolar"), cx, topY);
 
     // Optional: keyboard hint (smaller, calmer)
     textSize(12);
-    text("Mouse wheel ou ↑ ↓", cx, topY + 22);
+    text(t("dicaMouse"), cx, topY + 22);
   }
 
   // -------- Scroll progress bar (subtle but VERY helpful) --------
@@ -2526,7 +2609,7 @@ function enviarEmailPesquisa(email) {
     erroEmail = "";
   })
   .catch(() => {
-    erroEmail = "Erro ao enviar. Tente novamente.";
+    erroEmail = t("emailErro");
   });
 }
 
