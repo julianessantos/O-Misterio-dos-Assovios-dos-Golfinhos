@@ -278,7 +278,7 @@ const I18N = {
 // (se "m" não existir, usa "d")
 const HISTORIA_TEXTOS = {
   pt: [
-    { d: "Bem vindo, detetive!\n\nVocê sabia que, assim como você, nós golfinhos também temos \"nomes\" únicos que nos identificam?\n\nOs cientistas os chamam de assovios-assinatura, e podem utilizá-los para entender melhor nossas populações e nos proteger de ameaças." },
+    { d: "Bem vindo, detetive!\n\nVocê sabia que, assim como você, nós golfinhos também podemos ter \"nomes\" únicos que nos identificam?\n\nOs cientistas os chamam de assovios-assinatura, e podem utilizá-los para entender melhor nossas populações e nos proteger de ameaças." },
     { d: "Mas, como vocês humanos ainda não inventaram uma máquina de tradução de golfinhês, o maior desafio é encontrar nossos nomes, num verdadeiro mar de vozes.\n\nE é aí que você entra!\n\nO pessoal do Lab EAR Hub lá da UFRN precisa da sua ajuda para desvendar esse mistério.\n\nVou te mostrar como!" },
     { d: "Esta é uma representação visual de um de nossos assovios.\n\nQuando queremos anunciar nossos nomes nós os repetimos várias vezes.\n\nO seu trabalho será encontrar imagens que parecem repetir o mesmo desenho!" },
     { d: "Clique em imagens similares para selecioná-las.\n\nNão há número mínimo ou máximo de imagens por grupo, escolha todas as que você achar que são parecidas.",
@@ -292,7 +292,7 @@ const HISTORIA_TEXTOS = {
   ],
 
   en: [
-    { d: "Welcome, detective!\n\nDid you know that, just like you, we dolphins also have unique \"names\" that identify us?\n\nScientists call them signature whistles, and can use them to better understand our populations and protect us from threats." },
+    { d: "Welcome, detective!\n\nDid you know that, just like you, we dolphins can also have unique \"names\" that identify us?\n\nScientists call them signature whistles, and can use them to better understand our populations and protect us from threats." },
     { d: "But since you humans still haven't invented a dolphinese translation machine, the biggest challenge is finding our names in a true sea of voices.\n\nAnd that's where you come in!\n\nThe folks at the EAR Hub Lab at UFRN need your help to solve this mystery.\n\nLet me show you how!" },
     { d: "This is a visual representation of one of our whistles.\n\nWhen we want to announce our names, we repeat them several times.\n\nYour job will be to find images that seem to repeat the same pattern!" },
     { d: "Click on similar images to select them.\n\nThere is no minimum or maximum number of images per group; choose all the ones you think look alike.",
@@ -306,7 +306,7 @@ const HISTORIA_TEXTOS = {
   ],
 
   es: [
-    { d: "¡Bienvenido, detective!\n\n¿Sabías que, al igual que tú, los delfines también tenemos \"nombres\" únicos que nos identifican?\n\nLos científicos los llaman silbidos firma, y pueden usarlos para entender mejor nuestras poblaciones y protegernos de las amenazas." },
+    { d: "¡Bienvenido, detective!\n\n¿Sabías que, al igual que tú, los delfines también podemos tener \"nombres\" únicos que nos identifican?\n\nLos científicos los llaman silbidos firma, y pueden usarlos para entender mejor nuestras poblaciones y protegernos de las amenazas." },
     { d: "Pero como ustedes, los humanos, todavía no inventaron una máquina de traducción de delfinés, el mayor desafío es encontrar nuestros nombres en un verdadero mar de voces.\n\n¡Y ahí es donde entras tú!\n\nEl equipo del Lab EAR Hub de la UFRN necesita tu ayuda para resolver este misterio.\n\n¡Te voy a mostrar cómo!" },
     { d: "Esta es una representación visual de uno de nuestros silbidos.\n\nCuando queremos anunciar nuestros nombres, los repetimos varias veces.\n\n¡Tu trabajo será encontrar imágenes que parezcan repetir el mismo dibujo!" },
     { d: "Haz clic en las imágenes similares para seleccionarlas.\n\nNo hay un número mínimo ni máximo de imágenes por grupo; elige todas las que creas que se parecen.",
