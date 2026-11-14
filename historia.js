@@ -19,19 +19,38 @@ function preloadHistoria() {
 
   imagensHistoria = caminhos.map(p => loadImage(p));
 
-  // Imagens do layout de celular (em pé)
+}
+
+// Imagens do layout de celular / idiomas: carregadas no setup (não travam o jogo se faltarem)
+let imgsIdioma = {};
+
+function carregarImagensMobile() {
   imgsMobile = {
-    menuGolfinho: loadImage("ImagensMobile/menu_golfinho.png"),
-    menuTitulo:   loadImage("ImagensMobile/menu_titulo.png"),
-    golfinhoH:    loadImage("ImagensMobile/golfinho_h.png"),
-    golfinhoV:    loadImage("ImagensMobile/golfinho_v.png"),
-    golfinhoD:    loadImage("ImagensMobile/golfinho_d.png"),
-    cartaHistoria: loadImage("ImagensMobile/story_card.png"),
-    tut1: loadImage("ImagensMobile/tutorial_1.png"),
-    tut2: loadImage("ImagensMobile/tutorial_2.png"),
-    tut3: loadImage("ImagensMobile/tutorial_3.png"),
-    tut4: loadImage("ImagensMobile/tutorial_4.png")
+    menuGolfinho:  loadImage("ImagensMobile/menu_golfinho.png"),
+    menuTitulo:    loadImage("ImagensMobile/menu_titulo.png"),
+    golfinhoH:     loadImage("ImagensMobile/golfinho_h.png"),
+    golfinhoV:     loadImage("ImagensMobile/golfinho_v.png"),
+    golfinhoD:     loadImage("ImagensMobile/golfinho_d.png"),
+    cartaHistoria: loadImage("ImagensMobile/story_card.png")
   };
+}
+
+// Tutoriais (prints do jogo) de cada idioma: "m" = celular em pé, "d" = computador (só en/es)
+function carregarImagensIdioma(l) {
+  if (imgsIdioma[l]) return;
+  const o = {};
+  for (let n = 1; n <= 4; n++) {
+    o["tut" + n + "m"] = loadImage(`ImagensMobile/tutorial_${l}_${n}.png`);
+    if (l !== "pt") o["tut" + n + "d"] = loadImage(`ImagensIdioma/desktop_${l}_${n}.png`);
+  }
+  imgsIdioma[l] = o;
+}
+
+function getFiguraImg(key) {
+  if (!key) return null;
+  if (key === "cartaHistoria") return imgsMobile.cartaHistoria;
+  const o = imgsIdioma[lang];
+  return o ? o[key + (modoMobile ? "m" : "d")] : null;
 }
 
 function drawHistoria() {
@@ -39,7 +58,9 @@ function drawHistoria() {
   textFont(myFont);
 
   // Fundo - usa a imagem correspondente à página atual
-  if (imagensHistoria[historiaAtual]) {
+  if (lang !== "pt") {
+    drawHistoriaIdiomaDesktop();
+  } else if (imagensHistoria[historiaAtual]) {
     image(imagensHistoria[historiaAtual], 0, 0, BASE_W, BASE_H);
   } else {
     background(255);
@@ -86,7 +107,8 @@ function drawBotaoComecar() {
   textFont(myFont);
   textSize(12);
   textAlign(CENTER, CENTER);
-  text("COMEÇAR", btnX + btnW / 2, btnY + btnH / 2);
+  textSize(ajustarTexto(t("navComecar"), btnW - 16, 12));
+  text(t("navComecar"), btnX + btnW / 2, btnY + btnH / 2);
 }
 
 function drawNavegacaoHistoria() {
@@ -110,7 +132,8 @@ function drawNavegacaoHistoria() {
   noStroke();
   textSize(12);
   textAlign(CENTER, CENTER);
-  text("Cancelar", xCancelar + 55, yBotoes + 20);
+  textSize(ajustarTexto(t("navCancelar"), 100, 12));
+  text(t("navCancelar"), xCancelar + 55, yBotoes + 20);
 
   // Botão Anterior
   if (historiaAtual > 0) {
@@ -126,7 +149,8 @@ function drawNavegacaoHistoria() {
     rect(xAnterior, yBotoes, 110, 40, 10);
     fill(0);
     noStroke();
-    text("Anterior", xAnterior + 55, yBotoes + 20);
+    textSize(ajustarTexto(t("navAnterior"), 100, 12));
+    text(t("navAnterior"), xAnterior + 55, yBotoes + 20);
   }
 
   // Botão Próximo
@@ -143,7 +167,8 @@ function drawNavegacaoHistoria() {
     rect(xProximo, yBotoes, 110, 40, 10);
     fill(0);
     noStroke();
-    text("Próximo", xProximo + 55, yBotoes + 20);
+    textSize(ajustarTexto(t("navProximo"), 100, 12));
+    text(t("navProximo"), xProximo + 55, yBotoes + 20);
   }
 
   // Botão Pular (vai direto para o jogo)
@@ -159,7 +184,8 @@ function drawNavegacaoHistoria() {
   rect(xPular, yBotoes, 110, 40, 10);
   fill(0);
   noStroke();
-  text("Pular", xPular + 55, yBotoes + 20);
+  textSize(ajustarTexto(t("navPular"), 100, 12));
+  text(t("navPular"), xPular + 55, yBotoes + 20);
 }
 
 function mousePressedHistoria() {
@@ -256,23 +282,16 @@ function keyPressedHistoria() {
 // HISTÓRIA - layout de celular em pé (texto desenhado no código para
 // ficar grande; golfinho/figuras vêm da pasta ImagensMobile)
 // =====================================================================
+// Metadados das 8 páginas (textos ficam em idioma.js -> HISTORIA_TEXTOS)
 const HISTORIA_MOBILE = [
-  { golfinho: "H", figura: null,
-    texto: "Bem vindo, detetive!\n\nVocê sabia que, assim como você, nós golfinhos também temos \"nomes\" únicos que nos identificam?\n\nOs cientistas os chamam de assovios-assinatura, e podem utilizá-los para entender melhor nossas populações e nos proteger de ameaças." },
-  { golfinho: "H", figura: null,
-    texto: "Mas, como vocês humanos ainda não inventaram uma máquina de tradução de golfinhês, o maior desafio é encontrar nossos nomes, num verdadeiro mar de vozes.\n\nE é aí que você entra!\n\nO pessoal do Lab EAR Hub lá da UFRN precisa da sua ajuda para desvendar esse mistério.\n\nVou te mostrar como!" },
-  { golfinho: "D", figura: "cartaHistoria", figW: 420,
-    texto: "Esta é uma representação visual de um de nossos assovios.\n\nQuando queremos anunciar nossos nomes nós os repetimos várias vezes.\n\nO seu trabalho será encontrar imagens que parecem repetir o mesmo desenho!" },
-  { golfinho: "V", figura: "tut1",
-    texto: "Toque em imagens similares para selecioná-las.\n\nNão há número mínimo ou máximo de imagens por grupo, escolha todas as que você achar que são parecidas." },
-  { golfinho: "V", figura: "tut2",
-    texto: "Sua combinação atual aparece logo abaixo das cartas e você pode adicionar e remover cartas.\n\nQuando estiver satisfeito com o grupo utilize o botão verde para \"salvar combinação\"\n\nOu se quiser desistir do grupo toque em \"limpar seleção\" para começar novamente." },
-  { golfinho: "V", figura: "tut3",
-    texto: "Algumas imagens podem não se parecer com nenhuma outra. Nesse caso utilize o botão azul \"carta sem grupo\"" },
-  { golfinho: "D", figura: "tut4",
-    texto: "Cada partida mostra 30 assovios!\n\nDeslize para ver mais cartas. E não esqueça de olhar todas antes de salvar a combinação ;)" },
-  { golfinho: "H", figura: null,
-    texto: "Sua missão termina quando todos os 30 assovios forem agrupados e/ou marcados como carta sem grupo.\n\nAté mais, e obrigado pelos peixes!" }
+  { golfinho: "H", figura: null },
+  { golfinho: "H", figura: null },
+  { golfinho: "D", figura: "cartaHistoria", figW: 420 },
+  { golfinho: "V", figura: "tut1" },
+  { golfinho: "V", figura: "tut2" },
+  { golfinho: "V", figura: "tut3" },
+  { golfinho: "D", figura: "tut4" },
+  { golfinho: "H", figura: null }
 ];
 
 function glHistNav() {
@@ -295,7 +314,7 @@ function layoutHistoriaMobile(p) {
   const dolH = { H: 150, V: 210, D: 160 }[p.golfinho];
   const dolW = (dolImg && dolImg.width > 1) ? dolImg.width * dolH / dolImg.height : dolH;
 
-  const fig = p.figura ? imgsMobile[p.figura] : null;
+  const fig = getFiguraImg(p.figura);
   const figOk = fig && fig.width > 1;
   let figW = figOk ? Math.min(p.figW || 560, 560) : 0;
   let figH = figOk ? fig.height * figW / fig.width : 0;
@@ -310,7 +329,7 @@ function layoutHistoriaMobile(p) {
   for (size = 20; size >= 13; size--) {
     textSize(size);
     lead = Math.round(size * 1.55);
-    lines = wrapTextLines(p.texto, maxW);
+    lines = wrapTextLines(textoHistoria(historiaAtual, true), maxW);
     bubbleH = lines.length * lead + padB * 2;
     total = (figOk ? figH + gap : 0) + bubbleH + tail + dolH;
     if (total <= avail) break;
@@ -378,15 +397,15 @@ function drawHistoriaMobile() {
     noStroke();
     fill(0);
     textAlign(CENTER, CENTER);
-    textSize(16);
+    textSize(ajustarTexto(rotulo, r.w - 16, 16));
     text(rotulo, r.x + r.w / 2, r.y + r.h / 2);
   };
 
-  botao(N.cancelar, "Cancelar", [255, 100, 100], [255, 120, 120]);
-  botao(N.pular, "Pular", [255, 200, 80], [255, 220, 100]);
-  if (historiaAtual > 0) botao(N.anterior, "Anterior", [100, 200, 250], [120, 220, 255]);
-  if (!ultima) botao(N.proximo, "Próximo", [100, 200, 250], [120, 220, 255]);
-  else botao(N.proximo, "COMEÇAR", [100, 220, 100], [120, 235, 120]);
+  botao(N.cancelar, t("navCancelar"), [255, 100, 100], [255, 120, 120]);
+  botao(N.pular, t("navPular"), [255, 200, 80], [255, 220, 100]);
+  if (historiaAtual > 0) botao(N.anterior, t("navAnterior"), [100, 200, 250], [120, 220, 255]);
+  if (!ultima) botao(N.proximo, t("navProximo"), [100, 200, 250], [120, 220, 255]);
+  else botao(N.proximo, t("navComecar"), [100, 220, 100], [120, 235, 120]);
 
   fill(0);
   noStroke();
@@ -421,4 +440,80 @@ function mousePressedHistoriaMobile() {
     return true;
   }
   return false;
+}
+
+// =====================================================================
+// HISTÓRIA - computador, em inglês/espanhol (texto desenhado no código)
+// O português continua usando as imagens originais (TelaHistoria1..8.png)
+// =====================================================================
+function drawHistoriaIdiomaDesktop() {
+  const p = HISTORIA_MOBILE[historiaAtual];
+  const texto = textoHistoria(historiaAtual, false);
+  textFont(myFont);
+
+  if (imgFundo) image(imgFundo, 0, 0, BASE_W, BASE_H); else background(255);
+
+  const comFig = !!p.figura;
+  const fig = getFiguraImg(p.figura);
+  const figOk = fig && fig.width > 1;
+
+  const dolImg = { H: imgsMobile.golfinhoH, V: imgsMobile.golfinhoV, D: imgsMobile.golfinhoD }[p.golfinho];
+  const dolH = (comFig ? { H: 190, V: 250, D: 200 } : { H: 230, V: 300, D: 240 })[p.golfinho];
+  const dolOk = dolImg && dolImg.width > 1;
+  const dolW = dolOk ? dolImg.width * dolH / dolImg.height : dolH;
+
+  const availBottom = BASE_H - 165;                 // deixa livre a área dos botões
+  const bubbleW = comFig ? 620 : 860;
+  const bubbleX = comFig ? 40 : BASE_W - 60 - bubbleW;
+  const bubbleY = comFig ? 40 : 80;
+  const padB = 30, tail = 34;
+  const maxW = bubbleW - padB * 2;
+  const maxBubbleH = comFig ? (availBottom - bubbleY - tail - dolH + 24) : (availBottom - bubbleY);
+
+  let size = 24, lead = 36, linhas = [], bubbleH = 0;
+  for (size = 24; size >= 14; size--) {
+    textSize(size);
+    lead = Math.round(size * 1.5);
+    linhas = wrapTextLines(texto, maxW);
+    bubbleH = linhas.length * lead + padB * 2;
+    if (bubbleH <= maxBubbleH) break;
+  }
+  if (size < 14) size = 14;
+
+  // posição do golfinho + rabinho do balão
+  noStroke();
+  fill(255);
+  rect(bubbleX, bubbleY, bubbleW, bubbleH, 30);
+
+  let dolX, dolY;
+  if (comFig) {
+    dolX = 60;
+    dolY = bubbleY + bubbleH + tail - 10;
+    const tx = dolX + dolW * 0.45;
+    triangle(tx - 10, bubbleY + bubbleH - 2, tx + 36, bubbleY + bubbleH - 2, tx - 10, bubbleY + bubbleH + tail);
+  } else {
+    dolX = 40;
+    // golfinho perto da base do balão (balão curto = golfinho mais alto)
+    dolY = Math.min(availBottom - dolH, Math.max(bubbleY + 60, bubbleY + bubbleH - dolH * 0.45));
+    const bTop = Math.max(bubbleY + 24, bubbleY + bubbleH - 78);
+    triangle(bubbleX + 2, bTop, bubbleX + 2, bTop + 52, dolX + dolW * 0.9, dolY + dolH * 0.25);
+  }
+
+  // texto
+  fill(0);
+  textAlign(CENTER, TOP);
+  textSize(size);
+  for (let i = 0; i < linhas.length; i++) {
+    if (linhas[i] !== "") text(linhas[i], bubbleX + bubbleW / 2, bubbleY + padB + i * lead);
+  }
+
+  if (dolOk) image(dolImg, dolX, dolY, dolW, dolH);
+
+  // figura (prints do jogo no idioma escolhido)
+  if (figOk) {
+    const boxX = 700, boxY = 60, boxW = 660, boxH = availBottom - 60;
+    const esc = Math.min(boxW / fig.width, boxH / fig.height, 1.5);
+    const fw = fig.width * esc, fh = fig.height * esc;
+    image(fig, boxX + (boxW - fw) / 2, boxY + (boxH - fh) / 2, fw, fh);
+  }
 }
